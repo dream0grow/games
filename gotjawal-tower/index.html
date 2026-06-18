@@ -68,9 +68,12 @@
     background:#fff; border-radius:16px; padding:10px; box-shadow:0 12px 40px rgba(0,0,0,.55);
     text-align:center; transform:scale(0); opacity:0; transform-origin:center center; }
   #bigCard .photo { width:192px; height:150px; border-radius:10px; object-fit:cover; background:#dfe9e2; display:block; }
-  #bigCard .nm { color:#15452f; font-weight:900; font-size:19px; margin-top:8px; }
-  #bigCard .ft { color:#3c6b53; font-size:12px; line-height:1.45; margin-top:5px; }
-  #bigCard .got { color:#cf7a1a; font-size:13px; font-weight:800; margin-top:6px; }
+  #bigCard .nm { color:#15452f; font-weight:900; font-size:20px; margin-top:8px; }
+  #bigCard .ft { color:#2d5a42; font-size:14px; line-height:1.55; margin-top:7px;
+    background:#eef6f0; border-radius:10px; padding:9px 10px; text-align:left; }
+  #bigCard .got { color:#cf7a1a; font-size:13px; font-weight:800; margin-top:7px; }
+  #bigCard .tap { color:#7a9c8a; font-size:12px; font-weight:700; margin-top:9px; opacity:0;
+    transition:opacity .3s; }
 
   /* 랭킹 */
   .rankList { text-align:left; margin:8px 0 14px; }
@@ -112,6 +115,7 @@
       <div class="nm" id="bigName"></div>
       <div class="ft" id="bigFact"></div>
       <div class="got" id="bigGot"></div>
+      <div class="tap" id="bigTap">눌러서 계속 ▶</div>
     </div>
   </div>
 
@@ -321,7 +325,7 @@ bindPad('bLeft',v=>keys.left=v); bindPad('bRight',v=>keys.right=v); bindPad('bJu
 if('ontouchstart' in window||navigator.maxTouchPoints>0) document.getElementById('touch').style.display='block';
 
 /* ---------- 플랫폼 ---------- */
-function makePlatform(x,y,w,type){return {x,y,w,h:16,type,broken:false,breakT:0,used:false,dead:false};}
+function makePlatform(x,y,w,type){return {x,y,w,h:16,type,broken:false,breakT:0,used:false,dead:false,respawnT:0};}
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 
 function spawnInitial(){
@@ -412,6 +416,9 @@ function collectInsect(key, already){
   if(!already && !G.collected.includes(key)) G.collected.push(key);
   updateHUD();
   const card=document.getElementById('bigCard');
+  const layer=document.getElementById('cardLayer');
+  const tap=document.getElementById('bigTap');
+  tap.style.opacity='0';
   show('cardLayer');
   // 1) 초기: 작게/투명 (애니메이션 끄고 즉시 적용)
   card.style.transition='none';
@@ -420,11 +427,24 @@ function collectInsect(key, already){
   // 2) 등장(pop)
   card.style.transition='transform .45s cubic-bezier(.2,1.6,.5,1), opacity .25s';
   card.style.transform='scale(1)'; card.style.opacity='1';
-  // 3) 잠시 보여준 뒤 슬롯으로 날아가기
-  setTimeout(()=>flyToSlot(key, ()=>{
-    hide('cardLayer');
-    G.state='play'; G.invuln=Math.max(G.invuln,0.6);
-  }), 1300);
+  // 3) 설명을 읽을 수 있도록 화면에 머무름 → 화면을 누르면 슬롯으로 날아감
+  let proceeded=false;
+  const proceed=()=>{
+    if(proceeded) return; proceeded=true;
+    layer.removeEventListener('click', proceed);
+    layer.removeEventListener('touchstart', proceed);
+    layer.style.pointerEvents='none';
+    flyToSlot(key, ()=>{
+      hide('cardLayer');
+      G.state='play'; G.invuln=Math.max(G.invuln,0.6);
+    });
+  };
+  setTimeout(()=>{
+    layer.style.pointerEvents='auto';
+    tap.style.opacity='1';
+    layer.addEventListener('click', proceed);
+    layer.addEventListener('touchstart', proceed, {passive:true});
+  }, 600);
 }
 function flyToSlot(key, done){
   const card=document.getElementById('bigCard');
@@ -462,6 +482,8 @@ function continueAtPosition(reason){
     else { p.y=G.cameraY+VH*0.5; }
   } // bomb: 같은 자리 유지
   p.vx=0; p.vy=0; p.onGround=false;
+  // 떨어져서 화면 밖으로 사라졌을 때: 다시 착지한 캐릭터 위치가 보이도록 화면(카메라)을 맞춰줌
+  G.cameraY=p.y-VH*0.52;
   G.bombs=[];            // 폭탄 모두 제거(공정하게)
   G.invuln=2.2;
 }
@@ -543,7 +565,11 @@ function update(dt){
   while(G.topGen>G.cameraY-VH) generateNext();
   G.platforms=G.platforms.filter(pf=>pf.y<G.cameraY+VH+200);
 
-  for(const pf of G.platforms){ if(pf.type==='fragile'&&pf.breakT>0){ pf.breakT-=dt; if(pf.breakT<=0)pf.dead=true; } }
+  for(const pf of G.platforms){
+    if(pf.type!=='fragile') continue;
+    if(pf.breakT>0){ pf.breakT-=dt; if(pf.breakT<=0){ pf.dead=true; pf.respawnT=5; } }   // 사라진 뒤 5초 타이머 시작
+    else if(pf.dead && pf.respawnT>0){ pf.respawnT-=dt; if(pf.respawnT<=0){ pf.dead=false; pf.broken=false; pf.used=false; } }  // 5초 뒤 다시 등장
+  }
 
   // 하늘에서 떨어지는 폭탄
   updateBombs(dt, curM);
@@ -616,7 +642,16 @@ function drawBackground(){
 }
 function drawPlatforms(){
   for(const pf of G.platforms){
-    if(pf.dead)continue; const {x,y,w,h}=pf;
+    const {x,y,w,h}=pf;
+    if(pf.dead){
+      // 다시 나타나기 직전: 점선 윤곽으로 미리 보여줌(곧 복구됨을 알림)
+      if(pf.type==='fragile' && pf.respawnT>0){
+        const a=0.2+0.5*(1-pf.respawnT/5);   // 시간이 지날수록 점점 진해짐
+        ctx.globalAlpha=a; ctx.setLineDash([5,5]); ctx.lineWidth=2; ctx.strokeStyle='#8c7a5a';
+        ctx.strokeRect(x,y,w,h); ctx.setLineDash([]); ctx.globalAlpha=1;
+      }
+      continue;
+    }
     if(pf.type==='fragile'){
       const a=pf.breakT>0?0.4+0.6*(pf.breakT/0.45):1; ctx.globalAlpha=a;
       roundRect(x,y,w,h,6,'#6b5a44','#3c3020');
