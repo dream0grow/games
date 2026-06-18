@@ -314,12 +314,15 @@
       const isFinal = quizzesPlaced >= TARGET_QUIZ;
       return { r, type: "quiz", used: false, isFinal, cols: [{ col: 1, type: "QUIZ", x: COL_X[1], baseY, sinkAnim: 0, safe: true }] };
     }
-    // 양쪽(좌·우)은 항상, 가운데는 가끔만 — 가운데엔 즉사 돌이 절대 안 옴
+    // 기본은 한 줄에 2칸(좌·우), 가끔 한 줄에 1칸만 나옴
     const pickSafe = () => ["SLOW", "MEDSLOW", "FAST"][Math.floor(Math.random() * 3)];
-    const lanes = Math.random() < 0.45 ? [0, 1, 2] : [0, 2];
+    const single = r >= 4 && Math.random() < 0.22;            // 가끔 외길(1칸) 등장
+    const lanes = single ? [[0, 1, 2][Math.floor(Math.random() * 3)]] : [0, 2];
     const typeFor = {};
     const roll = Math.random();
-    if (r >= 4 && roll < 0.18) {
+    if (single) {
+      typeFor[lanes[0]] = pickSafe();                         // 외길은 반드시 안전한 돌(즉사·미스터리 없음)
+    } else if (r >= 4 && roll < 0.18) {
       lanes.forEach(c => typeFor[c] = "MYSTERY");           // 미스터리 줄: 모두 검정(동시 등장)
     } else if (roll < 0.46) {
       const sides = lanes.filter(c => c !== 1);
