@@ -147,6 +147,14 @@
   /* 화면 흔들림 */
   @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
   #app.shake{animation:shake .5s;}
+
+  /* ---- 모바일(세로): 화면을 꽉 채우고 퀴즈 선택지가 잘리지 않게 ---- */
+  @media (max-aspect-ratio: 1/1){
+    #app{ width:100vw; height:100dvh; max-height:none; aspect-ratio:auto; border-radius:0; }
+    canvas{ object-fit:contain; }
+    .screen{ justify-content:flex-start; padding-top:26px; padding-bottom:26px; overflow-y:auto; }
+    #quizBox{ top:54px; max-height:calc(100dvh - 64px); overflow-y:auto; }
+  }
 </style>
 </head>
 <body>

@@ -124,6 +124,21 @@
 
   @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
   #app.shake{animation:shake .45s;}
+
+  /* ---- 모바일: 화면을 꽉 채우고 글자/버튼 잘림 방지 ---- */
+  @media (max-aspect-ratio: 1/1){
+    #app{ width:100vw; height:100dvh; max-height:none; aspect-ratio:auto; border-radius:0; }
+    canvas{ object-fit:contain; }
+    .screen{ justify-content:flex-start; padding-top:26px; padding-bottom:26px; overflow-y:auto; }
+  }
+  /* ---- 모바일 방향 패드 (← ↑ → ↓) ---- */
+  #dpad{ position:fixed; left:14px; bottom:16px; z-index:9; display:none;
+    grid-template-columns:repeat(3,52px); grid-template-rows:repeat(3,52px); gap:6px; }
+  #dpad button{ border:none; border-radius:14px; background:rgba(255,255,255,.18); color:#fff;
+    font-size:24px; font-weight:900; box-shadow:0 3px 0 rgba(0,0,0,.3); user-select:none; -webkit-user-select:none; }
+  #dpad button:active{ background:rgba(255,255,255,.36); transform:translateY(2px); }
+  #dpadUp{grid-area:1/2} #dpadLeft{grid-area:2/1} #dpadRight{grid-area:2/3} #dpadDown{grid-area:3/2}
+  @media (hover:none) and (pointer:coarse){ body.playing #dpad{ display:grid; } }
 </style>
 </head>
 <body>
@@ -133,8 +148,16 @@
   <!-- HUD -->
   <div id="hud" class="hidden">
     <div id="lives">❤️❤️❤️</div>
-    <div class="pill" id="birds">🐦 0 / 5</div>
+    <div class="pill" id="birds">🐦 0 / 10</div>
     <div class="pill" id="score">0점</div>
+  </div>
+
+  <!-- 모바일 방향 패드 -->
+  <div id="dpad">
+    <button id="dpadUp" aria-label="위">▲</button>
+    <button id="dpadLeft" aria-label="왼쪽">◀</button>
+    <button id="dpadRight" aria-label="오른쪽">▶</button>
+    <button id="dpadDown" aria-label="아래">▼</button>
   </div>
 
   <!-- 퀴즈 -->
@@ -152,10 +175,10 @@
     <input id="name" maxlength="8" placeholder="이름을 적어줘! (예: 지호)" value="">
     <div id="nameMsg" class="nameMsg"></div>
     <div class="rules">
-      ⌨️ 키보드 <b>방향키(← ↑ → ↓)</b> 또는 <b>W A S D</b> 로 돌하르방을 움직여요. (휴대폰은 손가락으로 끌어요)<br>
+      ⌨️ 키보드 <b>방향키(← ↑ → ↓)</b> 또는 <b>W A S D</b>, <b>휴대폰은 왼쪽 아래 방향 버튼</b>(또는 손가락으로 끌기)으로 돌하르방을 움직여요.<br>
       🦋 <b>나비에 닿으면</b> 생명 ❤️ 가 줄어요. 나비는 점점 많아져요!<br>
       🐦 <b>새</b>를 만나면 퀴즈! 맞히면 새가 친구가 되고 <b>보너스 점수</b> ⭐<br>
-      🌿 새 친구 <b>5마리</b>를 모으면 귀한 <b>제주고사리삼</b>이 나타나요.<br>
+      🌿 새 친구 <b>10마리</b>를 모으면 귀한 <b>제주고사리삼</b>이 나타나요.<br>
       🏆 제주고사리삼에 닿으면 <b>대성공!</b> 큰 점수를 얻고 끝나요.
     </div>
     <button class="btn" id="startBtn">▶️ 시작하기</button>
@@ -202,12 +225,12 @@ const QUIZ = [
   { q:"'삐익 삐익' 시끄럽게 울며 무리지어 다니는, 숲에서 흔한 회갈색 새는?",
     a:"직박구리", w:["박새","팔색조"] },
   { q:"수컷의 등이 보석처럼 파랗고(유리빛), 여름에 찾아오는 아름다운 새는?",
-    a:"큰유리새", w:["동박새","직박구리"] },
-  { q:"동백꽃 꿀을 좋아하고 눈 둘레가 하얀 테로 둘린, 제주 숲의 연두빛 작은 새는?",
-    a:"동박새", w:["박새","팔색조"] },
+    a:"큰유리새", w:["긴꼬리딱새","직박구리"] },
+  { q:"수컷의 꽁지(꼬리)가 몸보다 훨씬 길게 리본처럼 늘어진, 곶자왈의 여름철새는?",
+    a:"긴꼬리딱새", w:["팔색조","박새"] },
 ];
 
-const TARGET_BIRDS = 5;          // 새 친구 N마리 모으면 제주고사리삼 등장
+const TARGET_BIRDS = 10;         // 새 친구 N마리 모으면 제주고사리삼 등장
 const QUIZ_TIME = 12000;         // 퀴즈 제한시간(ms)
 const LS_KEY = "gotjawal_butterfly_scores_v1";
 
@@ -265,6 +288,7 @@ function startGame(){
   resultScreen.classList.add("hidden");
   quizBox.classList.add("hidden");
   hud.classList.remove("hidden");
+  document.body.classList.add("playing");   // 모바일 방향패드 표시
   updateHud();
   state="play";
 }
@@ -394,6 +418,7 @@ function saveScores(a){ try{localStorage.setItem(scoreKey(),JSON.stringify(a));}
 function endGame(won){
   state = won ? "win" : "over";
   hud.classList.add("hidden"); quizBox.classList.add("hidden");
+  document.body.classList.remove("playing");   // 방향패드 숨김
   const stat=$("#resultStat"), title=$("#resultTitle"), board=$("#board");
   const timeSec=elapsed/1000;
 
@@ -417,7 +442,7 @@ function endGame(won){
       <b>${escapeHtml(playerName)}</b> 돌하르방<br>
       🐦 새 친구 <b>${birdsGot} / ${TARGET_BIRDS}</b> 마리<br>
       버틴 시간 <b>${timeSec.toFixed(1)}초</b> · 순위 <b>${rank}등</b><br>
-      <span style="opacity:.85">새 친구 5마리를 모으면 제주고사리삼이 나타나요!</span>`;
+      <span style="opacity:.85">새 친구 10마리를 모으면 제주고사리삼이 나타나요!</span>`;
     beep(200,0.25,0,"sawtooth");
   }
   const online = window.Leaderboard && Leaderboard.online;
@@ -726,7 +751,7 @@ function updateEntities(dt){
   // 새 스폰
   birdTimer-=dt;
   if(birdTimer<=0 && birds.length<2 && !fern){
-    birdTimer=rand(4200,6500);
+    birdTimer=rand(3200,5200);   // 새 10마리를 모을 수 있게 조금 더 자주
     spawnBird();
   }
 
@@ -830,6 +855,19 @@ window.addEventListener("keydown",e=>{
   if(state==="play" && MOVE_KEYS[e.key]) e.preventDefault();   // 방향키로 화면 스크롤 방지
 });
 window.addEventListener("keyup",e=>{ keys[e.key]=false; });
+
+/* 모바일 방향 패드 → 키보드 입력을 그대로 재사용 */
+function bindDir(id,key){
+  const el=document.getElementById(id); if(!el) return;
+  const on=e=>{ e.preventDefault(); keys[key]=true; };
+  const off=e=>{ e.preventDefault(); keys[key]=false; };
+  el.addEventListener("touchstart",on,{passive:false});
+  el.addEventListener("touchend",off,{passive:false});
+  el.addEventListener("touchcancel",off,{passive:false});
+  el.addEventListener("mousedown",on); el.addEventListener("mouseup",off); el.addEventListener("mouseleave",off);
+}
+bindDir("dpadUp","ArrowUp"); bindDir("dpadDown","ArrowDown");
+bindDir("dpadLeft","ArrowLeft"); bindDir("dpadRight","ArrowRight");
 
 /* 시작화면 이름 검증 */
 function nameOK(){
