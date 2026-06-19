@@ -28,10 +28,19 @@
   /* ---- 공통 화면 레이어 ---- */
   .screen{
     position:absolute; inset:0; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; text-align:center;
-    padding:5% 6%; gap:14px; z-index:5;
+    align-items:center; justify-content:safe center; text-align:center;
+    padding:4% 6%; gap:12px; z-index:5; overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
   }
+  .screen>*{flex-shrink:0;}
   .hidden{display:none !important;}
+
+  /* 화면(세로)이 낮을 때: 시작/결과 내용이 잘리지 않도록 더 촘촘하게 */
+  @media (max-height:600px){
+    .screen{gap:7px; padding:3% 5%;}
+    #startScreen .sub{line-height:1.35;}
+    .rules{padding:8px 12px; line-height:1.45;}
+  }
 
   /* ---- 시작 화면 ---- */
   #startScreen{

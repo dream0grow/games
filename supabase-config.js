@@ -12,6 +12,7 @@
    ▶ 값을 바꾸기 전에는 자동으로 '이 기기에만 저장(로컬)' 모드로 동작합니다.
    ========================================================= */
 window.SUPABASE_CONFIG = {
-  url: "https://YOUR-PROJECT.supabase.co",
-  anonKey: "YOUR-ANON-PUBLIC-KEY"
+  url: "https://lanootakxybeshnsrnyu.supabase.co"
+,
+  anonKey:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxhbm9vdGFreHliZXNobnNybnl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MjU3MTIsImV4cCI6MjA5NzQwMTcxMn0.8AskVp2wror0uHHjoa2IegvMAbL6cuN1HlV4Fhet0wo"
 };
