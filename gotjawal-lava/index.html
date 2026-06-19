@@ -43,6 +43,12 @@
     line-height: 1.15; margin-bottom: 10px;
   }
   .game-sub { font-size: clamp(13px, 2.2vw, 20px); color: #ffb27a; margin-bottom: 22px; }
+  .title-name-row { display:flex; flex-direction:column; align-items:center; gap:4px; margin-bottom:16px; }
+  .title-name-row input { border:3px solid #ffcf6b; border-radius:12px; padding:11px 16px; font-size:clamp(15px,2.4vw,20px); width:min(82%,300px); text-align:center; font-weight:700; background:#fff; color:#3a2410; }
+  .title-name-row input.warn { border-color:#ff5a3c; animation: shakeX .3s; }
+  .name-msg { font-size:clamp(12px,2vw,15px); color:#ffd24a; font-weight:800; min-height:1.1em; }
+  @keyframes shakeX { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  .saved-msg { font-size:clamp(14px,2.2vw,18px); color:#b6f06a; font-weight:800; margin-bottom:16px; min-height:1.2em; }
   .howto {
     background: rgba(255,255,255,0.08); border: 2px solid rgba(255,200,120,0.35);
     border-radius: 14px; padding: 14px 18px;
@@ -148,6 +154,10 @@
           <span>❌ 빨간 X 돌 = 밟으면 끝!</span>
         </div>
       </div>
+      <div class="title-name-row">
+        <input id="titleName" maxlength="6" placeholder="이름을 적어줘! (예: 지호)" />
+        <div id="titleNameMsg" class="name-msg"></div>
+      </div>
       <div style="font-size:clamp(13px,2vw,17px); color:#ffe9b0; margin-bottom:10px;">난이도를 골라 시작하세요</div>
       <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
         <button id="startEasy" class="btn green">🌱 초급 시작<br><span style="font-size:12px;font-weight:600;">천천히 · 1~2학년 퀴즈</span></button>
@@ -173,10 +183,7 @@
     <div id="endScreen" class="overlay hidden">
       <div id="endTitle" class="end-title"></div>
       <div id="endScore" class="end-score"></div>
-      <div class="name-row">
-        <input id="nameInput" maxlength="6" placeholder="이름" />
-        <button id="saveScoreBtn" class="btn" style="padding:10px 20px;font-size:16px;">기록 저장</button>
-      </div>
+      <div id="savedMsg" class="saved-msg"></div>
       <div class="rank-box">
         <h3>🏆 명예의 전당 (랭킹)</h3>
         <ol id="rankList" class="rank-list"></ol>
@@ -280,6 +287,7 @@
 
   // ---------- state ----------
   let state = "TITLE";
+  let playerName = "";
   let diffKey = "easy", diff = DIFF.easy;
   let rows = [], genRow = 0, quizzesPlaced = 0, finalDone = false, goalRow = null;
   let player = null, cameraY = 0, particles = [], shake = 0, scrollPause = 0;
@@ -860,21 +868,20 @@
   }
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m])); }
 
-  let pendingScore = null;
-  document.getElementById("saveScoreBtn").onclick = () => {
-    if (pendingScore == null) return;
-    let name = (document.getElementById("nameInput").value.trim() || "꼬마탐험가").slice(0, 6);
-    localStorage.setItem("gotjawal_lastname", name);
-    const list = loadRanking();
-    const entry = { name, score: pendingScore.score, won: pendingScore.won, date: Date.now() };
-    list.push(entry); list.sort((a, b) => b.score - a.score);
-    const idx = list.indexOf(entry); saveRanking(list); pendingScore = null;
-    document.getElementById("nameInput").disabled = true; document.getElementById("saveScoreBtn").disabled = true;
-    renderRanking(idx);
-  };
-
   // ---------- screens & input ----------
   function startGame(key) {
+    // 시작할 때 이름을 확인 (다시 도전 시에는 이미 정한 이름을 그대로 사용)
+    const input = document.getElementById("titleName");
+    const typed = input.value.trim();
+    if (typed) playerName = typed.slice(0, 6);
+    if (!playerName) {
+      document.getElementById("titleNameMsg").textContent = "✏️ 이름을 먼저 적어줘!";
+      input.classList.remove("warn"); void input.offsetWidth; input.classList.add("warn");
+      input.focus(); sfx.wrong();
+      return;
+    }
+    localStorage.setItem("gotjawal_lastname", playerName);
+
     diffKey = (key === "hard") ? "hard" : "easy";
     diff = DIFF[diffKey];
     document.getElementById("titleScreen").classList.add("hidden");
@@ -892,11 +899,15 @@
     es.classList.remove("hidden"); es.classList.toggle("lose", !won);
     document.getElementById("endTitle").textContent = won ? "🌳 곶자왈에 도착! 🎉" : "🌋 앗, 용암에 빠졌어요!";
     document.getElementById("endScore").textContent = (won ? "용암을 모두 건넜어요! " : "") + "최종 점수: " + player.score + "점";
-    pendingScore = { score: player.score, won };
-    const ni = document.getElementById("nameInput");
-    ni.disabled = false; ni.value = localStorage.getItem("gotjawal_lastname") || "";
-    document.getElementById("saveScoreBtn").disabled = false;
-    renderRanking(-1);
+
+    // 게임이 끝나면 점수를 자동으로 저장 (시작할 때 적은 이름으로)
+    const name = playerName || "꼬마탐험가";
+    const list = loadRanking();
+    const entry = { name, score: player.score, won, date: Date.now() };
+    list.push(entry); list.sort((a, b) => b.score - a.score);
+    const idx = list.indexOf(entry); saveRanking(list);
+    document.getElementById("savedMsg").textContent = `💾 '${name}' 이름으로 점수가 저장됐어요!`;
+    renderRanking(idx);
   }
 
   window.addEventListener("keydown", (e) => {
@@ -915,6 +926,16 @@
     const rx = (e.clientX - rect.left) / rect.width;
     ascend(rx < 0.34 ? -1 : rx > 0.66 ? 1 : 0);
   });
+
+  // 지난번에 쓴 이름을 미리 채워줌
+  (() => {
+    const input = document.getElementById("titleName");
+    input.value = localStorage.getItem("gotjawal_lastname") || "";
+    input.addEventListener("input", () => {
+      document.getElementById("titleNameMsg").textContent = "";
+      input.classList.remove("warn");
+    });
+  })();
 
   renderRanking(-1);
   requestAnimationFrame(loop);
