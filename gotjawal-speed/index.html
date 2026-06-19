@@ -122,6 +122,7 @@
     width:min(94%,440px); background:rgba(255,255,255,.1); border-radius:14px;
     border:1px solid rgba(255,255,255,.22); overflow:hidden; font-size:clamp(12px,2.6vw,16px);
   }
+  #board .boardTitle{padding:8px 12px; font-weight:800; color:var(--gold); background:rgba(0,0,0,.18); font-size:clamp(12px,2.6vw,15px);}
   #board .row{display:grid; grid-template-columns:46px 1fr auto auto; gap:8px; padding:9px 12px; align-items:center;}
   #board .row+.row{border-top:1px solid rgba(255,255,255,.12);}
   #board .row.head{background:rgba(0,0,0,.18); font-weight:800; color:var(--gold);}
@@ -198,6 +199,8 @@
   </div>
 </div>
 
+<script src="../supabase-config.js"></script>
+<script src="../leaderboard.js"></script>
 <script>
 (() => {
 "use strict";
@@ -497,17 +500,42 @@ function endGame(cleared){
     nextBtn.classList.add("hidden");
     beep(200,0.2,0,"sawtooth");
   }
-  renderBoard(board, scores, entry);
+  const online = window.Leaderboard && Leaderboard.online;
+  renderBoard(board, scores, rank-1, online?"🏅 랭킹 불러오는 중…":"🏅 랭킹 (이 기기)");
   board.classList.remove("hidden");
   resultScreen.classList.remove("hidden");
+  if(online) syncOnline(board, entry);
 }
 
-function renderBoard(board, scores, me){
-  let html=`<div class="row head"><span>순위</span><span class="nm">이름</span><span>성적</span><span></span></div>`;
+// 온라인 정렬용 점수: 완주는 빠를수록↑, 미완주는 많이 맞힐수록↑ (완주 > 미완주)
+function onlineScore(cleared, correct, time){
+  return cleared
+    ? 2000000 - Math.round(time*1000)
+    : (correct||0)*100000 - Math.round((time||0)*10);
+}
+async function syncOnline(board, entry){
+  await Leaderboard.submitScore("speed-"+stage, entry.name,
+    onlineScore(entry.cleared, entry.correct, entry.time),
+    {cleared:entry.cleared, correct:entry.correct, time:entry.time});
+  const rows=await Leaderboard.topScores("speed-"+stage, 8);
+  if(!rows) return; // 실패 시 로컬 랭킹 유지
+  const norm=rows.map(r=>({
+    name:r.name,
+    cleared:r.extra&&r.extra.cleared,
+    correct:(r.extra&&r.extra.correct)||0,
+    time:(r.extra&&r.extra.time)||0
+  }));
+  const meIdx=rows.findIndex(r=>r.name===entry.name && Math.abs(((r.extra&&r.extra.time)||0)-entry.time)<0.05 && (!!(r.extra&&r.extra.cleared))===(!!entry.cleared));
+  renderBoard(board, norm, meIdx, "🌐 온라인 랭킹");
+}
+
+function renderBoard(board, scores, meIdx, label){
+  let html=`<div class="boardTitle">${label}</div>`;
+  html+=`<div class="row head"><span>순위</span><span class="nm">이름</span><span>성적</span><span></span></div>`;
   scores.slice(0,8).forEach((s,i)=>{
     const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1);
-    const isMe = (s===me);
-    const result = s.cleared ? `🏁 ${s.time.toFixed(1)}초` : `${s.correct||0}개`;
+    const isMe = (i===meIdx);
+    const result = s.cleared ? `🏁 ${(+s.time).toFixed(1)}초` : `${s.correct||0}개`;
     html+=`<div class="row${isMe?" me":""}">
       <span class="rank">${medal}</span>
       <span class="nm">${escapeHtml(s.name)}</span>

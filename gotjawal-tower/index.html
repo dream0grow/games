@@ -170,6 +170,8 @@
   </div>
 </div>
 
+<script src="../supabase-config.js"></script>
+<script src="../leaderboard.js"></script>
 <script>
 "use strict";
 /* =========================================================
@@ -533,22 +535,36 @@ function liveScore(){
   return G.bestM*10 + G.collected.length*500 + G.correctCount*200 + G.bombsDodged*5;
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-function renderRanking(score){
-  let arr=[]; try{ arr=JSON.parse(localStorage.getItem('gotjawal_rank')||'[]'); }catch(e){}
-  const me={name:G.name||'꼬마탐험가', score, t:Date.now()};
-  arr.push(me); arr.sort((a,b)=>b.score-a.score);
-  const rank=arr.indexOf(me)+1;
-  arr=arr.slice(0,10);
-  try{ localStorage.setItem('gotjawal_rank', JSON.stringify(arr.map(e=>({name:e.name||'꼬마탐험가',score:e.score,t:e.t})))); }catch(e){}
+function drawRank(rows, meIdx, label, rank, color){
   const medal=['🥇','🥈','🥉'];
-  let html=`<div style="color:#ffe07a;font-weight:800;margin-bottom:6px;">🏅 랭킹 — 이번 ${rank}등</div>`;
-  arr.slice(0,5).forEach((e,i)=>{
-    const isMe=(e===me);
+  let html=`<div style="color:${color};font-weight:800;margin-bottom:6px;">${label}${rank?` — 이번 ${rank}등`:''}</div>`;
+  rows.slice(0,5).forEach((e,i)=>{
+    const isMe=(i===meIdx);
     html+=`<div class="rankRow${isMe?' me':''}"><span class="r">${medal[i]||(i+1)+'위'}</span>`
         + `<span class="nm">${escapeHtml(e.name||'꼬마탐험가')}</span>`
         + `<span>${e.score} 점</span><span>${isMe?'← 이번':''}</span></div>`;
   });
   document.getElementById('rankList').innerHTML=html;
+}
+function renderRanking(score){
+  // 1) 로컬에 저장하고 즉시 표시 (오프라인·미설정 대비)
+  let arr=[]; try{ arr=JSON.parse(localStorage.getItem('gotjawal_rank')||'[]'); }catch(e){}
+  const me={name:G.name||'꼬마탐험가', score, t:Date.now()};
+  arr.push(me); arr.sort((a,b)=>b.score-a.score);
+  const rank=arr.indexOf(me)+1; const meIdx=arr.indexOf(me); arr=arr.slice(0,10);
+  try{ localStorage.setItem('gotjawal_rank', JSON.stringify(arr.map(e=>({name:e.name||'꼬마탐험가',score:e.score,t:e.t})))); }catch(e){}
+  const online = window.Leaderboard && Leaderboard.online;
+  drawRank(arr, meIdx, online?'🏅 랭킹 불러오는 중…':'🏅 랭킹 (이 기기)', rank, '#ffe07a');
+  // 2) 온라인이면 점수를 올리고 전체 랭킹으로 다시 그림
+  if(online) syncOnline(score);
+}
+async function syncOnline(score){
+  const name=G.name||'꼬마탐험가';
+  await Leaderboard.submitScore('tower', name, score, {m:G.bestM, insects:G.collected.length});
+  const rows=await Leaderboard.topScores('tower', 10);
+  if(!rows){ return; } // 실패 시 이미 그려둔 로컬 랭킹 유지
+  let meIdx=rows.findIndex(r=>r.name===name && r.score===score);
+  drawRank(rows, meIdx, '🌐 온라인 랭킹', meIdx>=0?meIdx+1:null, '#7fe3a8');
 }
 
 /* ---------- 루프 ---------- */
