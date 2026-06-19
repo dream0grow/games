@@ -185,7 +185,7 @@
       <div id="endScore" class="end-score"></div>
       <div id="savedMsg" class="saved-msg"></div>
       <div class="rank-box">
-        <h3>🏆 명예의 전당 (랭킹)</h3>
+        <h3 id="rankTitle">🏆 명예의 전당 (랭킹)</h3>
         <ol id="rankList" class="rank-list"></ol>
       </div>
       <button id="restartBtn" class="btn green">다시 도전 🔁</button>
@@ -193,6 +193,8 @@
   </div>
 </div>
 
+<script src="../supabase-config.js"></script>
+<script src="../leaderboard.js"></script>
 <script>
 (() => {
   "use strict";
@@ -855,16 +857,27 @@
   const RANK_KEY = "gotjawal_ranking_v2";
   function loadRanking() { try { return JSON.parse(localStorage.getItem(RANK_KEY)) || []; } catch (e) { return []; } }
   function saveRanking(list) { try { localStorage.setItem(RANK_KEY, JSON.stringify(list)); } catch (e) {} }
-  function renderRanking(hi) {
-    const list = loadRanking(), ol = document.getElementById("rankList"); ol.innerHTML = "";
+  function drawRankList(list, hi) {
+    const ol = document.getElementById("rankList"); ol.innerHTML = "";
     const medals = ["🥇", "🥈", "🥉"];
     if (!list.length) { const li = document.createElement("li"); li.textContent = "아직 기록이 없어요. 첫 도전자가 되어 보세요!"; ol.appendChild(li); return; }
     list.slice(0, 8).forEach((r, i) => {
       const li = document.createElement("li"); if (i === hi) li.className = "me";
-      const left = document.createElement("span"); left.innerHTML = `<span class="rank-medal">${medals[i] || (i + 1)}</span>${escapeHtml(r.name)} ${r.won ? "🌳" : ""}`;
+      const won = r.won != null ? r.won : (r.extra && r.extra.won);
+      const left = document.createElement("span"); left.innerHTML = `<span class="rank-medal">${medals[i] || (i + 1)}</span>${escapeHtml(r.name)} ${won ? "🌳" : ""}`;
       const right = document.createElement("span"); right.textContent = r.score + "점";
       li.appendChild(left); li.appendChild(right); ol.appendChild(li);
     });
+  }
+  function renderRanking(hi) { drawRankList(loadRanking(), hi); }
+  async function syncOnline(name, score, won) {
+    if (!(window.Leaderboard && Leaderboard.online)) return;
+    await Leaderboard.submitScore("lava", name, score, { won: won });
+    const rows = await Leaderboard.topScores("lava", 8);
+    if (!rows) return; // 실패 시 이미 그려둔 로컬 랭킹 유지
+    document.getElementById("rankTitle").textContent = "🌐 온라인 랭킹";
+    const meIdx = rows.findIndex(r => r.name === name && r.score === score);
+    drawRankList(rows, meIdx);
   }
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m])); }
 
@@ -906,8 +919,12 @@
     const entry = { name, score: player.score, won, date: Date.now() };
     list.push(entry); list.sort((a, b) => b.score - a.score);
     const idx = list.indexOf(entry); saveRanking(list);
-    document.getElementById("savedMsg").textContent = `💾 '${name}' 이름으로 점수가 저장됐어요!`;
+    const online = window.Leaderboard && Leaderboard.online;
+    document.getElementById("savedMsg").textContent = online
+      ? `🌐 '${name}' 이름으로 온라인 랭킹에 점수가 저장됐어요!`
+      : `💾 '${name}' 이름으로 점수가 저장됐어요! (이 기기)`;
     renderRanking(idx);
+    if (online) syncOnline(name, player.score, won);
   }
 
   window.addEventListener("keydown", (e) => {
