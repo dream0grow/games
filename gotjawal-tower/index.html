@@ -22,6 +22,13 @@
   .btn:active { transform:translateY(4px); box-shadow:0 1px 0 #1d8a48; }
   .help { text-align:left; font-size:13px; color:#bfe6d3; line-height:1.9; margin:6px 0 14px; }
   .help b { color:#ffe07a; }
+  #name { width:90%; max-width:280px; margin:4px auto 2px; display:block; text-align:center;
+    border:2.5px solid #6fd49b; border-radius:12px; padding:11px 14px; font-size:17px; font-weight:700;
+    background:#0c2b1e; color:#eafff3; outline:none; }
+  #name::placeholder { color:#6f9c84; font-weight:600; }
+  #name.warn { border-color:#ff6a4d; animation:shakeX .3s; }
+  #nameMsg { font-size:13px; color:#ffe07a; font-weight:800; min-height:1.1em; margin-bottom:6px; }
+  @keyframes shakeX { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
   .hide { display:none !important; }
 
   /* HUD 계기판 */
@@ -81,6 +88,7 @@
     font-size:15px; color:#dff2e7; }
   .rankRow.me { background:#1f6b46; color:#fff; font-weight:800; }
   .rankRow .r { width:34px; }
+  .rankRow .nm { flex:1; text-align:left; padding-left:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .endTitle { font-size:48px; color:#ff6a4d; text-shadow:3px 3px 0 #5a1208; letter-spacing:4px; }
 </style>
 </head>
@@ -133,6 +141,8 @@
         ❤️ 목숨 5개 — 죽어도 같은 자리에서 다시! 다 쓰면 END·랭킹.
       </div>
       <div class="help">PC: <b>← →</b> 이동, <b>Space/↑</b> 점프 · 폰: 아래 버튼</div>
+      <input id="name" maxlength="8" placeholder="이름을 적어줘! (예: 지호)" value="">
+      <div id="nameMsg"></div>
       <button class="btn" id="startBtn">시작하기 ▶</button>
     </div>
   </div>
@@ -301,7 +311,7 @@ const G={ state:'start', lives:5, collected:[], player:null, platforms:[],
   nextQuizCounter:4, quizDeck:[], quizPtr:0,
   bombs:[], bombTimer:0,
   invuln:0, shake:0,
-  score:0, correctCount:0, bombsDodged:0 };
+  score:0, correctCount:0, bombsDodged:0, name:'' };
 
 const GRAV=0.62, MOVE=4.6, JUMP_V=-12.6, METER=80, P_W=38, P_H=30;
 
@@ -351,7 +361,22 @@ function generateNext(){
 function newPlayer(){return {x:VW/2-P_W/2,y:VH-120-P_H,vx:0,vy:0,onGround:false,face:1};}
 
 /* ---------- 시작 ---------- */
+function ensureName(){
+  const inp=document.getElementById('name');
+  const typed=(inp.value||'').trim().slice(0,8);
+  if(typed) G.name=typed;
+  if(!G.name){
+    const msg=document.getElementById('nameMsg');
+    msg.textContent='✏️ 이름을 먼저 적어줘!';
+    inp.classList.remove('warn'); void inp.offsetWidth; inp.classList.add('warn');
+    inp.focus();
+    return false;
+  }
+  try{ localStorage.setItem('gotjawal_lastname', G.name); }catch(e){}
+  return true;
+}
 function startGame(){
+  if(!ensureName()) return;
   G.state='play'; G.lives=5; G.collected=[]; G.elapsed=0;
   G.nextQuizCounter=4; G.quizDeck=shuffle([...Array(INSECTS.length).keys()]); G.quizPtr=0;
   G.invuln=0; G.shake=0; G.bombs=[]; G.bombTimer=1.2;
@@ -507,18 +532,20 @@ function finalizeScore(){
 function liveScore(){
   return G.bestM*10 + G.collected.length*500 + G.correctCount*200 + G.bombsDodged*5;
 }
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function renderRanking(score){
   let arr=[]; try{ arr=JSON.parse(localStorage.getItem('gotjawal_rank')||'[]'); }catch(e){}
-  const me={score, t:Date.now()};
+  const me={name:G.name||'꼬마탐험가', score, t:Date.now()};
   arr.push(me); arr.sort((a,b)=>b.score-a.score);
   const rank=arr.indexOf(me)+1;
   arr=arr.slice(0,10);
-  try{ localStorage.setItem('gotjawal_rank', JSON.stringify(arr.map(e=>({score:e.score,t:e.t})))); }catch(e){}
+  try{ localStorage.setItem('gotjawal_rank', JSON.stringify(arr.map(e=>({name:e.name||'꼬마탐험가',score:e.score,t:e.t})))); }catch(e){}
   const medal=['🥇','🥈','🥉'];
   let html=`<div style="color:#ffe07a;font-weight:800;margin-bottom:6px;">🏅 랭킹 — 이번 ${rank}등</div>`;
   arr.slice(0,5).forEach((e,i)=>{
     const isMe=(e===me);
     html+=`<div class="rankRow${isMe?' me':''}"><span class="r">${medal[i]||(i+1)+'위'}</span>`
+        + `<span class="nm">${escapeHtml(e.name||'꼬마탐험가')}</span>`
         + `<span>${e.score} 점</span><span>${isMe?'← 이번':''}</span></div>`;
   });
   document.getElementById('rankList').innerHTML=html;
@@ -754,6 +781,12 @@ function hideAll(ids){ids.forEach(hide);}
 
 document.getElementById('startBtn').onclick=startGame;
 document.getElementById('retryBtn').onclick=startGame;
+// 지난번 이름 미리 채우기 + 입력하면 경고 해제
+(function(){
+  const inp=document.getElementById('name');
+  try{ inp.value=localStorage.getItem('gotjawal_lastname')||''; }catch(e){}
+  inp.addEventListener('input',()=>{ document.getElementById('nameMsg').textContent=''; inp.classList.remove('warn'); });
+})();
 requestAnimationFrame(loop);
 </script>
 </body>
