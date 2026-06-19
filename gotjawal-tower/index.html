@@ -468,18 +468,40 @@ function loseLife(reason){
   if(G.lives<=0){ endGame(reason); return; }
   continueAtPosition(reason);
 }
+// 용암 위쪽의 '밟을 수 있는' 발판 위에서 부활시킨다(없으면 새로 만들어 준다).
+function placeOnPlatformAboveLava(p){
+  const margin=70;
+  // 용암보다 위(=y가 작음)에 있는, 부서지지 않은 단단한 발판들
+  let cands=G.platforms.filter(pf=>!pf.dead && pf.type!=='fragile' && pf.y < G.lavaY-margin);
+  if(cands.length===0){
+    // 하나도 없으면 플레이어 근처에 새 발판을 만들어 발판이 사라져 막히는 일이 없게 한다
+    const w=96, x=Math.max(14, Math.min(VW-14-w, (p.x+P_W/2)-w/2));
+    const np=makePlatform(x, G.lavaY-150, w, 'normal');
+    G.platforms.push(np); cands=[np];
+  }
+  // 용암에 가장 가까운(아래쪽) 발판부터 → 그 중 플레이어 x에 가까운 것
+  const lowestY=Math.max(...cands.map(pf=>pf.y));
+  const band=cands.filter(pf=>pf.y>=lowestY-VH*0.5);
+  band.sort((a,b)=>Math.abs((a.x+a.w/2)-(p.x+P_W/2))-Math.abs((b.x+b.w/2)-(p.x+P_W/2)));
+  const t=band[0];
+  p.x=t.x+t.w/2-P_W/2; p.y=t.y-P_H;
+}
 function continueAtPosition(reason){
   const p=G.player;
-  if(reason==='lava'){ p.y=G.lavaY-P_H-70; G.lavaY+=180; }
+  if(reason==='lava'){
+    // 용암을 충분히 아래로 내려 숨 돌릴 공간을 주고, 용암 위 발판에서 부활
+    G.lavaY += 280;
+    placeOnPlatformAboveLava(p);
+  }
   else if(reason==='fall'){
     // 화면 밖으로 떨어졌으면 가까운 안전 발판으로
     const safe=G.platforms.filter(pf=>!pf.dead && pf.y<G.lavaY-100 && pf.y>G.cameraY+60)
       .sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x))[0];
     if(safe){ p.x=safe.x+safe.w/2-P_W/2; p.y=safe.y-P_H; }
-    else { p.y=G.cameraY+VH*0.5; }
+    else { placeOnPlatformAboveLava(p); }
   } // bomb: 같은 자리 유지
-  p.vx=0; p.vy=0; p.onGround=false;
-  // 떨어져서 화면 밖으로 사라졌을 때: 다시 착지한 캐릭터 위치가 보이도록 화면(카메라)을 맞춰줌
+  p.vx=0; p.vy=0; p.onGround=true;
+  // 다시 착지한 캐릭터 위치가 보이도록 화면(카메라)을 맞춰줌
   G.cameraY=p.y-VH*0.52;
   G.bombs=[];            // 폭탄 모두 제거(공정하게)
   G.invuln=2.2;

@@ -175,7 +175,7 @@
     <input id="name" maxlength="8" placeholder="이름을 적어줘! (예: 지호)" value="">
     <div id="nameMsg" class="nameMsg"></div>
     <div class="rules">
-      ⌨️ 키보드 <b>방향키(← ↑ → ↓)</b> 또는 <b>W A S D</b>, <b>휴대폰은 왼쪽 아래 방향 버튼</b>(또는 손가락으로 끌기)으로 돌하르방을 움직여요.<br>
+      ⌨️ 키보드 <b>방향키(← ↑ → ↓)</b> 또는 <b>W A S D</b>, <b>휴대폰은 왼쪽 아래 방향 버튼</b>으로 돌하르방을 움직여요.<br>
       🦋 <b>나비에 닿으면</b> 생명 ❤️ 가 줄어요. 나비는 점점 많아져요!<br>
       🐦 <b>새</b>를 만나면 퀴즈! 맞히면 새가 친구가 되고 <b>보너스 점수</b> ⭐<br>
       🌿 새 친구 <b>10마리</b>를 모으면 귀한 <b>제주고사리삼</b>이 나타나요.<br>
@@ -721,17 +721,12 @@ function drawParticles(dt){
    업데이트
    ========================================================= */
 function updatePlayer(dt){
-  // 키보드 이동 (방향키 / WASD, 대소문자 모두)
+  // 이동은 키보드 방향키/WASD 와 화면 방향패드(← ↑ → ↓)로만. (터치 드래그 이동 없음)
   const k=0.62*dt;
   if(keys.ArrowLeft||keys.a||keys.A) player.x-=k;
   if(keys.ArrowRight||keys.d||keys.D) player.x+=k;
   if(keys.ArrowUp||keys.w||keys.W) player.y-=k;
   if(keys.ArrowDown||keys.s||keys.S) player.y+=k;
-  // 휴대폰 손가락 드래그(보조)
-  if(pointer.active){
-    player.x += (pointer.x-player.x)*Math.min(1,dt*0.018);
-    player.y += (pointer.y-player.y)*Math.min(1,dt*0.018);
-  }
   player.x=clamp(player.x,30,W-30);
   player.y=clamp(player.y,40,H-30);
 }
@@ -839,11 +834,9 @@ function canvasPos(e){
   const cy=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
   return { x:cx/r.width*W, y:cy/r.height*H };
 }
-// 이동은 키보드 우선. 휴대폰엔 키보드가 없으니 손가락 드래그만 보조로 둔다.
+// 화면 터치로는 캐릭터가 움직이지 않음(방향패드/키보드만 사용). 터치는 소리 활성화 + 스크롤 방지만.
 function onTouch(e){
   if(!actx){try{actx=new(window.AudioContext||window.webkitAudioContext)();}catch(_){}}
-  if(state!=="play") return;
-  const p=canvasPos(e); pointer.x=p.x; pointer.y=p.y; pointer.active=true;
   e.preventDefault();
 }
 cv.addEventListener("mousedown",()=>{ if(!actx){try{actx=new(window.AudioContext||window.webkitAudioContext)();}catch(_){}} });
