@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>원기둥 하나 더 넣기</title>
+<meta name="description" content="상자에 꽉 찬 원기둥 40개를 옮겨 41개를 넣어 보며 정사각형 구조와 정육각형(벌집) 구조를 비교하는 3D 수학 탐구 게임" />
+<style>
+  :root {
+    --bg: #f6efe3;
+    --panel: rgba(255, 252, 245, 0.94);
+    --panel-solid: #fffcf5;
+    --ink: #3a2410;
+    --ink-soft: #7a5a36;
+    --line: #ecd9b8;
+    --accent: #c2560c;
+    --accent-soft: #ffe7cc;
+    --good: #2f9e44;
+    --good-soft: #dff5e3;
+    --bad: #d6336c;
+    --blue: #2563eb;
+    --blue-soft: #dbe8ff;
+    --shadow: 0 10px 30px rgba(120, 70, 10, 0.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --panel: rgba(38, 30, 22, 0.94);
+      --panel-solid: #261e16;
+      --ink: #f5e8d6;
+      --ink-soft: #cdb392;
+      --line: #4a3a28;
+      --accent: #ff9a4d;
+      --accent-soft: #4a2e17;
+      --good: #5ad07a;
+      --good-soft: #1f3a26;
+      --blue: #7aa7ff;
+      --blue-soft: #1d2a45;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --panel: rgba(38, 30, 22, 0.94);
+    --panel-solid: #261e16;
+    --ink: #f5e8d6;
+    --ink-soft: #cdb392;
+    --line: #4a3a28;
+    --accent: #ff9a4d;
+    --accent-soft: #4a2e17;
+    --good: #5ad07a;
+    --good-soft: #1f3a26;
+    --blue: #7aa7ff;
+    --blue-soft: #1d2a45;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #scene { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  /* ---------- 상단 바 ---------- */
+  #topbar {
+    position: fixed; top: 10px; left: 12px; right: 12px; z-index: 5;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    pointer-events: none;
+  }
+  #topbar > * { pointer-events: auto; }
+  .brand {
+    background: var(--panel); border: 2px solid var(--line); border-radius: 14px;
+    padding: 6px 12px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 8px;
+    font-weight: 800; font-size: 17px; white-space: nowrap;
+  }
+  .brand a { text-decoration: none; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+  .tabs {
+    display: flex; gap: 4px; background: var(--panel); border: 2px solid var(--line);
+    border-radius: 14px; padding: 4px; box-shadow: var(--shadow); flex-wrap: wrap;
+  }
+  .tab {
+    border: 0; background: transparent; padding: 7px 12px; border-radius: 10px;
+    font-weight: 700; font-size: 14px; color: var(--ink-soft); white-space: nowrap;
+  }
+  .tab.on { background: var(--accent); color: #fff; }
+  .iconbtn {
+    background: var(--panel); border: 2px solid var(--line); border-radius: 12px;
+    padding: 7px 10px; box-shadow: var(--shadow); font-size: 15px; font-weight: 700;
+  }
+  .spacer { flex: 1; }
+
+  /* ---------- 상태 칩 ---------- */
+  #stats {
+    position: fixed; left: 12px; top: 64px; z-index: 4;
+    display: flex; flex-direction: column; gap: 6px; pointer-events: none;
+  }
+  .chip {
+    background: var(--panel); border: 2px solid var(--line); border-radius: 12px;
+    padding: 6px 12px; box-shadow: var(--shadow); font-size: 14px; font-weight: 700;
+    display: flex; align-items: baseline; gap: 6px; white-space: nowrap;
+  }
+  .chip b { font-size: 22px; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .chip.big b { font-size: 30px; }
+  .chip small { color: var(--ink-soft); font-weight: 600; }
+  .chip.win { border-color: var(--good); }
+  .chip.win b { color: var(--good); }
+  .meter { width: 120px; height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; align-self: center; }
+  .meter i { display: block; height: 100%; background: linear-gradient(90deg, #f59f00, #e8590c); width: 0; transition: width .4s; }
+
+  /* ---------- 오른쪽 패널 ---------- */
+  #panel {
+    position: fixed; right: 12px; top: 64px; bottom: 84px; width: 350px; z-index: 4;
+    background: var(--panel); border: 2px solid var(--line); border-radius: 18px;
+    box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+    -webkit-user-select: text; user-select: text;
+  }
+  #panelHead {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 14px; border-bottom: 2px solid var(--line); font-weight: 800; font-size: 16px;
+  }
+  #panelToggle { white-space: nowrap; flex-shrink: 0; border: 0; background: var(--accent-soft); border-radius: 8px; padding: 4px 10px; font-weight: 700; font-size: 13px; }
+  #panelBody { padding: 12px 14px 16px; overflow-y: auto; line-height: 1.6; font-size: 14.5px; }
+  #panel.collapsed #panelBody { display: none; }
+  #panel.collapsed { bottom: auto; }
+  .card {
+    background: var(--panel-solid); border: 2px solid var(--line); border-radius: 14px;
+    padding: 10px 12px; margin-bottom: 10px;
+  }
+  .card h3 { font-size: 15px; margin-bottom: 4px; }
+  .card p + p { margin-top: 6px; }
+  .mission { border-color: var(--accent); background: var(--accent-soft); }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .btn {
+    border: 2px solid var(--line); background: var(--panel-solid); border-radius: 10px;
+    padding: 7px 11px; font-weight: 700; font-size: 14px;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.on { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .hint { background: var(--blue-soft); border-color: var(--blue); }
+  .hint b { color: var(--blue); }
+  .muted { color: var(--ink-soft); font-size: 13px; }
+  table.rec { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 6px; }
+  table.rec th, table.rec td { border: 1px solid var(--line); padding: 4px 5px; text-align: center; }
+  table.rec th { background: var(--accent-soft); }
+  .num { font-variant-numeric: tabular-nums; font-weight: 800; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 14px; }
+  .kv span:nth-child(odd) { color: var(--ink-soft); }
+  .stepper { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+  .stepper label { width: 44px; font-weight: 700; }
+  .stepper button { width: 34px; height: 34px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel-solid); font-weight: 800; font-size: 18px; }
+  .stepper output { width: 30px; text-align: center; font-weight: 800; font-size: 18px; }
+  .reveal { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; margin-top: 8px; }
+  .reveal .val { font-weight: 800; font-size: 18px; min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---------- 하단 도구 ---------- */
+  #toolbar {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 12px; z-index: 5;
+    display: flex; gap: 6px; background: var(--panel); border: 2px solid var(--line);
+    border-radius: 16px; padding: 6px; box-shadow: var(--shadow); max-width: calc(100vw - 24px);
+    overflow-x: auto;
+  }
+  .tool {
+    border: 0; background: transparent; border-radius: 10px; padding: 6px 9px;
+    display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 54px;
+    font-size: 11.5px; font-weight: 700; color: var(--ink-soft); white-space: nowrap;
+  }
+  .tool span { font-size: 20px; line-height: 1.1; }
+  .tool:hover { background: var(--accent-soft); }
+  .tool.on { background: var(--blue-soft); color: var(--blue); }
+
+  /* ---------- 떠 있는 것들 ---------- */
+  #band { position: fixed; border: 2px dashed var(--blue); background: rgba(37, 99, 235, 0.12); z-index: 3; display: none; pointer-events: none; border-radius: 4px; }
+  #label {
+    position: fixed; z-index: 3; pointer-events: none; display: none; transform: translate(-50%, -120%);
+    background: #1f2937; color: #fff; font-weight: 800; padding: 5px 10px; border-radius: 10px; font-size: 15px;
+    white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  }
+  #toast {
+    position: fixed; left: 50%; top: 72px; transform: translateX(-50%) translateY(-10px); z-index: 20;
+    background: #1f2937; color: #fff; padding: 10px 16px; border-radius: 12px; font-weight: 700;
+    opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; max-width: calc(100vw - 32px); text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
+
+  /* ---------- 모달 ---------- */
+  .modal {
+    position: fixed; inset: 0; z-index: 40; background: rgba(40, 24, 8, 0.45);
+    display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal.show { display: flex; }
+  .sheet {
+    background: var(--panel-solid); color: var(--ink); border-radius: 22px; border: 3px solid var(--line);
+    box-shadow: var(--shadow); width: min(560px, 100%); max-height: calc(100vh - 32px); overflow-y: auto;
+    padding: 22px 22px 18px; line-height: 1.65; -webkit-user-select: text; user-select: text;
+  }
+  .sheet h2 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+  .sheet .lead { font-size: 16px; margin-bottom: 12px; }
+  .sheet ul { padding-left: 4px; list-style: none; margin: 8px 0 14px; }
+  .sheet li { margin: 6px 0; display: flex; gap: 8px; }
+  .sheet li > span:first-child { flex: 0 0 26px; text-align: center; }
+  .sheet .btnrow { justify-content: flex-end; margin-top: 14px; }
+  .sheet .btn { padding: 10px 16px; font-size: 15px; }
+  .qopts { display: grid; gap: 8px; margin: 12px 0; }
+  .qopt { text-align: left; border: 2px solid var(--line); background: var(--panel-solid); border-radius: 12px; padding: 11px 14px; font-weight: 700; font-size: 15.5px; }
+  .qopt:hover:not(:disabled) { border-color: var(--accent); }
+  .qopt.right { border-color: var(--good); background: var(--good-soft); }
+  .qopt.wrong { border-color: var(--bad); background: rgba(214, 51, 108, .12); }
+  .qexp { border-radius: 12px; padding: 10px 12px; background: var(--blue-soft); display: none; }
+  .qexp.show { display: block; }
+  .qprog { display: flex; gap: 4px; margin-bottom: 10px; }
+  .qprog i { flex: 1; height: 6px; border-radius: 99px; background: var(--line); }
+  .qprog i.done { background: var(--good); }
+  .qprog i.miss { background: var(--bad); }
+  .qprog i.cur { background: var(--accent); }
+  .bigscore { font-size: 48px; font-weight: 900; color: var(--accent); text-align: center; margin: 6px 0; }
+  svg text { font-family: inherit; }
+
+  /* ---------- 모바일 ---------- */
+  @media (max-width: 760px) {
+    #topbar { top: 8px; left: 8px; right: 8px; gap: 6px; }
+    .brand { font-size: 15px; padding: 5px 10px; }
+    .brand a { display: none; }
+    .tab { padding: 6px 9px; font-size: 13px; }
+    #stats { top: auto; bottom: calc(38vh + 12px); left: 8px; flex-direction: row; flex-wrap: wrap; right: 8px; }
+    .chip { padding: 4px 9px; font-size: 12.5px; }
+    .chip b { font-size: 17px; }
+    .chip.big b { font-size: 20px; }
+    .meter { width: 60px; }
+    #panel { left: 8px; right: 8px; width: auto; top: auto; bottom: 76px; height: calc(38vh - 64px); }
+    #panel.collapsed { height: auto; }
+    #toolbar { bottom: 8px; }
+    .tool { min-width: 46px; padding: 5px 6px; font-size: 10.5px; }
+    .tool span { font-size: 18px; }
+  }
+  @media (max-width: 760px) and (max-height: 560px) {
+    #panel { display: none; }
+    #stats { bottom: 76px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="topbar">
+  <div class="brand">🥫 원기둥 하나 더 넣기 <a href="../">← 게임 목록</a></div>
+  <div class="tabs" role="tablist">
+    <button class="tab on" data-mode="challenge">① 도전</button>
+    <button class="tab" data-mode="explore">② 탐구</button>
+    <button class="tab" data-mode="lab">③ 실험실</button>
+    <button class="tab" data-mode="quiz">④ 퀴즈</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="iconbtn" id="helpBtn" title="조작 방법">❓</button>
+</div>
+
+<div id="stats"></div>
+
+<aside id="panel">
+  <div id="panelHead"><span id="panelTitle">도전</span><button id="panelToggle">접기</button></div>
+  <div id="panelBody"></div>
+</aside>
+
+<div id="toolbar">
+  <button class="tool" data-act="undo" title="되돌리기 (Ctrl+Z)"><span>↩️</span>되돌리기</button>
+  <button class="tool" data-act="viewTop" title="위에서 내려다보기"><span>⬇️</span>위에서</button>
+  <button class="tool" data-act="viewTilt" title="비스듬히 보기"><span>📐</span>비스듬히</button>
+  <button class="tool on" data-act="magnet" title="놓으면 옆 캔 사이 홈에 딱 맞춰 줘요"><span>🧲</span>자석</button>
+  <button class="tool" data-act="deselect" title="선택 해제 (Esc)"><span>✖️</span>선택해제</button>
+  <button class="tool" data-act="skin" title="나무 원기둥 ↔ 음료 캔"><span>🪵</span>모양</button>
+  <button class="tool" data-act="sound" title="소리 켜기/끄기"><span>🔊</span>소리</button>
+  <button class="tool" data-act="reset" title="처음 상태로"><span>🔄</span>처음부터</button>
+</div>
+
+<div id="band"></div>
+<div id="label"></div>
+<div id="toast"></div>
+<canvas id="fx"></canvas>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* =========================================================
+   기본 치수 (캔 지름 = 1)
+   ========================================================= */
+const R = 0.5;                 // 캔 반지름
+const CAN_H = 1.05;            // 캔 높이
+const T = 0.28;                // 상자 벽 두께
+const WALL_H = 0.55;           // 상자 벽 높이
+const TABLE_Y = -0.16;         // 책상 높이 (상자 바닥 두께만큼 아래)
+const LIFT = 0.95;             // 들어 올릴 때 높이
+const S3 = Math.sqrt(3) / 2;   // 엇갈린 줄 사이 간격 ≈ 0.866
+const EPS = 1e-4;
+let W = 8, H = 5;              // 상자 안쪽 크기 (가로 × 세로)
+const GOAL = 41;
+
+/* =========================================================
+   렌더러 · 장면 · 카메라
+   ========================================================= */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#efe3cf');
+
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+camera.position.set(1, 11, 9);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.12;
+controls.mouseButtons = { LEFT: -1, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+controls.touches = { ONE: -1, TWO: THREE.TOUCH.DOLLY_ROTATE };
+controls.enablePan = false;
+controls.minDistance = 4;
+controls.maxDistance = 45;
+controls.maxPolarAngle = 1.35;
+
+scene.add(new THREE.HemisphereLight(0xfff6e8, 0x8a6a4a, 1.0));
+const sun = new THREE.DirectionalLight(0xffffff, 1.9);
+sun.position.set(-6, 16, 9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -16; sun.shadow.camera.right = 16;
+sun.shadow.camera.top = 12; sun.shadow.camera.bottom = -12;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 50;
+sun.shadow.bias = -0.0006;
+sun.shadow.normalBias = 0.02;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xffe2c0, 0.45);
+fill.position.set(8, 6, -6);
+scene.add(fill);
+
+/* =========================================================
+   질감(텍스처) — 캔버스로 직접 그림
+   ========================================================= */
+let seed = 7;
+const rng = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+function cv(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function tex(c, rep) {
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]); }
+  return t;
+}
+function drawStar(g, x, y, ro, ri, color) {
+  g.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 ? ri : ro, a = -Math.PI / 2 + i * Math.PI / 5;
+    g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+  }
+  g.closePath(); g.fillStyle = color; g.fill();
+  g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.85)'; g.stroke();
+  g.fillStyle = '#fff'; g.font = '900 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('+1', x, y + 3);
+}
+const TONES = [[28, 58, 70], [24, 60, 63], [32, 52, 76], [20, 50, 58]];
+function woodTop(tone, star) {
+  const c = cv(256, 256), g = c.getContext('2d'); const [h, s, l] = tone;
+  g.fillStyle = `hsl(${h},${s}%,${l}%)`; g.fillRect(0, 0, 256, 256);
+  const cx = 128 + (rng() - 0.5) * 120, cy = 128 + (rng() - 0.5) * 120;
+  for (let r = 3; r < 420; r += 4 + rng() * 10) {
+    g.strokeStyle = `hsla(${h - 4},${s + 6}%,${l - 20}%,${0.05 + rng() * 0.13})`;
+    g.lineWidth = 1 + rng() * 2.4;
+    g.beginPath(); g.ellipse(cx, cy, r, r * (0.92 + rng() * 0.16), rng() * 0.4, 0, Math.PI * 2); g.stroke();
+  }
+  const grd = g.createRadialGradient(128, 128, 96, 128, 128, 128);
+  grd.addColorStop(0, 'rgba(0,0,0,0)'); grd.addColorStop(1, 'rgba(110,50,10,0.38)');
+  g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+  if (star) drawStar(g, 128, 128, 62, 30, '#dc2626');
+  return tex(c);
+}
+function woodSide(tone) {
+  const c = cv(512, 128), g = c.getContext('2d'); const [h, s, l] = tone;
+  g.fillStyle = `hsl(${h},${s}%,${l - 3}%)`; g.fillRect(0, 0, 512, 128);
+  for (let i = 0; i < 90; i++) {
+    const x = rng() * 512, w = (rng() - 0.5) * 18;
+    g.strokeStyle = `hsla(${h - 5},${s + 5}%,${l - 22}%,${0.04 + rng() * 0.14})`;
+    g.lineWidth = 0.8 + rng() * 2.2;
+    g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + w, 64, x + (rng() - 0.5) * 6, 128); g.stroke();
+  }
+  return tex(c);
+}
+const CAN_COLORS = ['#e03131', '#1971c2', '#2f9e44', '#f08c00', '#7048e8', '#0c8599'];
+function canSide(color, special) {
+  const c = cv(512, 128), g = c.getContext('2d');
+  g.fillStyle = special ? '#fff' : color; g.fillRect(0, 0, 512, 128);
+  g.fillStyle = special ? '#dc2626' : 'rgba(255,255,255,.9)';
+  g.beginPath(); g.moveTo(0, 70);
+  for (let x = 0; x <= 512; x += 8) g.lineTo(x, 66 + Math.sin(x / 512 * Math.PI * 4) * 12);
+  g.lineTo(512, 86); for (let x = 512; x >= 0; x -= 8) g.lineTo(x, 84 + Math.sin(x / 512 * Math.PI * 4) * 12);
+  g.closePath(); g.fill();
+  g.fillStyle = special ? '#dc2626' : '#fff'; g.font = '900 44px sans-serif'; g.textAlign = 'center';
+  g.fillText(special ? '+1' : 'π', 128, 52); g.fillText(special ? '+1' : 'π', 384, 52);
+  const band = (y) => { const gr = g.createLinearGradient(0, y, 0, y + 10); gr.addColorStop(0, '#cfd4da'); gr.addColorStop(.5, '#f8f9fa'); gr.addColorStop(1, '#adb5bd'); g.fillStyle = gr; g.fillRect(0, y, 512, 10); };
+  band(0); band(118);
+  return tex(c);
+}
+function canTop(special) {
+  const c = cv(256, 256), g = c.getContext('2d');
+  const gr = g.createRadialGradient(110, 100, 10, 128, 128, 128);
+  gr.addColorStop(0, '#f8f9fa'); gr.addColorStop(1, '#9aa3ad');
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  g.strokeStyle = 'rgba(60,70,80,.45)'; g.lineWidth = 6;
+  g.beginPath(); g.arc(128, 128, 112, 0, Math.PI * 2); g.stroke();
+  g.lineWidth = 2; g.beginPath(); g.arc(128, 128, 100, 0, Math.PI * 2); g.stroke();
+  if (special) drawStar(g, 128, 128, 58, 28, '#dc2626');
+  else {
+    g.fillStyle = 'rgba(90,100,110,.55)';
+    g.beginPath(); g.ellipse(128, 86, 34, 20, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#6c757d'; g.beginPath(); g.ellipse(128, 128, 10, 10, 0, 0, Math.PI * 2); g.fill();
+  }
+  return tex(c);
+}
+function plankTex(light) {
+  const c = cv(512, 512), g = c.getContext('2d');
+  g.fillStyle = light ? '#e9c79a' : '#d8a86f'; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 160; i++) {
+    const y = rng() * 512;
+    g.strokeStyle = `rgba(120,60,20,${0.03 + rng() * 0.1})`; g.lineWidth = 1 + rng() * 2;
+    g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(170, y + (rng() - .5) * 20, 340, y + (rng() - .5) * 20, 512, y); g.stroke();
+  }
+  return c;
+}
+function deskTex() {
+  const c = cv(512, 512), g = c.getContext('2d');
+  g.fillStyle = '#e8dcc6'; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 3500; i++) { g.fillStyle = `rgba(120,90,50,${rng() * 0.05})`; g.fillRect(rng() * 512, rng() * 512, 2, 2); }
+  g.strokeStyle = 'rgba(150,120,80,.18)'; g.lineWidth = 2;
+  for (let i = 0; i <= 512; i += 128) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 512); g.stroke(); g.beginPath(); g.moveTo(0, i); g.lineTo(512, i); g.stroke(); }
+  return tex(c, [24, 24]);
+}
+
+const TEX = {
+  woodTop: TONES.map(t => woodTop(t, false)),
+  woodTopStar: woodTop([20, 55, 66], true),
+  woodSide: TONES.map(t => woodSide(t)),
+  canSide: CAN_COLORS.map(c => canSide(c, false)),
+  canSideSpecial: canSide('#fff', true),
+  canTop: canTop(false),
+  canTopStar: canTop(true),
+};
+
+/* =========================================================
+   책상 · 상자
+   ========================================================= */
+const desk = new THREE.Mesh(new THREE.PlaneGeometry(120, 120),
+  new THREE.MeshStandardMaterial({ map: deskTex(), roughness: 0.95 }));
+desk.rotation.x = -Math.PI / 2; desk.position.y = TABLE_Y; desk.receiveShadow = true;
+scene.add(desk);
+
+const trayGroup = new THREE.Group(); scene.add(trayGroup);
+const trayWoodA = tex(plankTex(true)), trayWoodB = tex(plankTex(false));
+const trayMat = new THREE.MeshStandardMaterial({ map: trayWoodA, roughness: 0.75 });
+const floorMat = new THREE.MeshStandardMaterial({ map: trayWoodB, roughness: 0.85 });
+const gapMat = new THREE.MeshBasicMaterial({ color: '#1d4ed8' });
+let gapPlane = null;
+
+function buildTray() {
+  while (trayGroup.children.length) { const m = trayGroup.children.pop(); m.geometry.dispose(); }
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(W + 2 * T, -TABLE_Y, H + 2 * T), floorMat);
+  floor.position.y = TABLE_Y / 2; floor.receiveShadow = true; floor.castShadow = true;
+  trayGroup.add(floor);
+  const wall = (w, d, x, z) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, WALL_H - TABLE_Y, d), trayMat);
+    m.position.set(x, (WALL_H + TABLE_Y) / 2, z); m.castShadow = true; m.receiveShadow = true;
+    trayGroup.add(m);
+  };
+  wall(W + 2 * T, T, 0, -H / 2 - T / 2);
+  wall(W + 2 * T, T, 0, H / 2 + T / 2);
+  wall(T, H, -W / 2 - T / 2, 0);
+  wall(T, H, W / 2 + T / 2, 0);
+  gapPlane = new THREE.Mesh(new THREE.PlaneGeometry(W, H), gapMat);
+  gapPlane.rotation.x = -Math.PI / 2; gapPlane.position.y = 0.003;
+  gapPlane.visible = state.showGaps;
+  trayGroup.add(gapPlane);
+}
+
+/* =========================================================
+   캔(원기둥) 객체 — 하나하나가 따로 움직이는 대상
+   ========================================================= */
+const canGeo = new THREE.CylinderGeometry(R * 0.994, R * 0.994, CAN_H, 56, 1);
+const cans = [];
+let special = null;
+
+function createCan() {
+  const mats = [new THREE.MeshStandardMaterial(), new THREE.MeshStandardMaterial(), new THREE.MeshStandardMaterial()];
+  const mesh = new THREE.Mesh(canGeo, mats);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  const can = { id: cans.length, mesh, mats, x: 0, z: 0, active: false, special: false, anim: null, tone: cans.length % 4 };
+  mesh.userData.can = can;
+  scene.add(mesh);
+  cans.push(can);
+  applySkin(can);
+  return can;
+}
+function applySkin(c) {
+  const [side, top, bottom] = c.mats;
+  if (state.skin === 'wood') {
+    side.map = TEX.woodSide[c.tone]; top.map = c.special ? TEX.woodTopStar : TEX.woodTop[c.tone]; bottom.map = TEX.woodTop[c.tone];
+    for (const m of c.mats) { m.metalness = 0; m.roughness = 0.72; m.color.set('#ffffff'); }
+  } else {
+    side.map = c.special ? TEX.canSideSpecial : TEX.canSide[c.id % CAN_COLORS.length];
+    top.map = c.special ? TEX.canTopStar : TEX.canTop; bottom.map = TEX.canTop;
+    side.metalness = 0.35; side.roughness = 0.35;
+    top.metalness = 0.6; top.roughness = 0.3; bottom.metalness = 0.6; bottom.roughness = 0.4;
+    for (const m of c.mats) m.color.set('#ffffff');
+  }
+  for (const m of c.mats) m.needsUpdate = true;
+}
+function setGlow(c, color, k) {
+  for (const m of c.mats) { m.emissive.set(color); m.emissiveIntensity = k; }
+}
+function refreshGlow() {
+  for (const c of cans) {
+    if (selected.has(c)) setGlow(c, '#3b82f6', 0.42);
+    else if (inspect.center === c) setGlow(c, '#ff7a00', 0.6);
+    else if (inspect.nbrs.includes(c)) setGlow(c, '#22c55e', 0.5);
+    else setGlow(c, '#000000', 0);
+  }
+}
+const act = () => cans.filter(c => c.active);
+function setCanCount(n) {
+  while (cans.length < n) createCan();
+  cans.forEach((c, i) => {
+    c.active = i < n; c.mesh.visible = c.active; c.anim = null;
+    if (c.special) { c.special = false; applySkin(c); }
+  });
+}
+
+/* =========================================================
+   기하 판정 — 겹침 · 벽 · 자석(홈 맞춤)
+   ========================================================= */
+const TX = () => W / 2 + T + 9.5, TZ = () => H / 2 + T + 11;
+const inner = () => ({ x0: -W / 2 + R, x1: W / 2 - R, z0: -H / 2 + R, z1: H / 2 - R });
+const regionOf = (x, z) => (Math.abs(x) < W / 2 + T && Math.abs(z) < H / 2 + T) ? 'in' : 'out';
+const isInside = c => regionOf(c.x, c.z) === 'in';
+const baseY = (x, z) => regionOf(x, z) === 'in' ? 0 : TABLE_Y;
+function distToOuter(x, z) {
+  const dx = Math.max(Math.abs(x) - (W / 2 + T), 0), dz = Math.max(Math.abs(z) - (H / 2 + T), 0);
+  return Math.hypot(dx, dz);
+}
+function validPoint(x, z, mode, obs) {
+  if (mode === 'in') {
+    const b = inner();
+    if (x < b.x0 - EPS || x > b.x1 + EPS || z < b.z0 - EPS || z > b.z1 + EPS) return false;
+  } else {
+    if (distToOuter(x, z) < R - EPS) return false;
+    if (Math.abs(x) > TX() - R || Math.abs(z) > TZ() - R) return false;
+  }
+  const lim = (1 - EPS) * (1 - EPS);
+  for (const o of obs) { const dx = o.x - x, dz = o.z - z; if (dx * dx + dz * dz < lim) return false; }
+  return true;
+}
+function validGroup(orig, s, modes, obs) {
+  for (let i = 0; i < orig.length; i++) if (!validPoint(orig[i].x + s.x, orig[i].z + s.z, modes[i], obs)) return false;
+  return true;
+}
+// 한 점(캔 중심)이 벽·이웃 캔 두 개에 동시에 맞닿는 '홈' 자리들
+function contactCands(P, obs, single) {
+  const b = inner(), out = [];
+  const near = obs.filter(o => (o.x - P.x) ** 2 + (o.z - P.z) ** 2 < 2.7 * 2.7);
+  const lines = [['x', b.x0], ['x', b.x1], ['z', b.z0], ['z', b.z1]];
+  if (single) {
+    for (const o of near) { const d = Math.hypot(P.x - o.x, P.z - o.z); if (d > 1e-6) out.push({ x: o.x + (P.x - o.x) / d, z: o.z + (P.z - o.z) / d }); }
+    for (const [ax, v] of lines) out.push(ax === 'x' ? { x: v, z: P.z } : { x: P.x, z: v });
+    return out;
+  }
+  for (let i = 0; i < near.length; i++) for (let j = i + 1; j < near.length; j++) {
+    const a = near[i], c = near[j], dx = c.x - a.x, dz = c.z - a.z, d = Math.hypot(dx, dz);
+    if (d > 2 || d < 1e-6) continue;
+    const h = Math.sqrt(Math.max(0, 1 - (d / 2) ** 2)), mx = (a.x + c.x) / 2, mz = (a.z + c.z) / 2;
+    out.push({ x: mx - dz / d * h, z: mz + dx / d * h }, { x: mx + dz / d * h, z: mz - dx / d * h });
+  }
+  for (const o of near) for (const [ax, v] of lines) {
+    if (ax === 'x') { const dx = v - o.x; if (Math.abs(dx) > 1) continue; const h = Math.sqrt(1 - dx * dx); out.push({ x: v, z: o.z + h }, { x: v, z: o.z - h }); }
+    else { const dz = v - o.z; if (Math.abs(dz) > 1) continue; const h = Math.sqrt(1 - dz * dz); out.push({ x: o.x + h, z: v }, { x: o.x - h, z: v }); }
+  }
+  out.push({ x: b.x0, z: b.z0 }, { x: b.x0, z: b.z1 }, { x: b.x1, z: b.z0 }, { x: b.x1, z: b.z1 });
+  return out;
+}
+function correction(p, mode, obs) {
+  let best = { x: 0, z: 0 }, bl = 0;
+  const take = (x, z) => { const l = Math.hypot(x, z); if (l > bl) { bl = l; best = { x, z }; } };
+  if (mode === 'in') {
+    const b = inner();
+    take(Math.min(Math.max(p.x, b.x0), b.x1) - p.x, Math.min(Math.max(p.z, b.z0), b.z1) - p.z);
+  } else {
+    const ax = W / 2 + T, az = H / 2 + T, d = distToOuter(p.x, p.z);
+    if (d < R) {
+      if (d > 1e-9) {
+        const nx = Math.sign(p.x) * Math.max(Math.abs(p.x) - ax, 0) / d, nz = Math.sign(p.z) * Math.max(Math.abs(p.z) - az, 0) / d;
+        take(nx * (R - d + 1e-4), nz * (R - d + 1e-4));
+      } else {
+        const ex = ax - Math.abs(p.x), ez = az - Math.abs(p.z);
+        if (ex < ez) take(Math.sign(p.x || 1) * (ex + R + 1e-4), 0); else take(0, Math.sign(p.z || 1) * (ez + R + 1e-4));
+      }
+    }
+    const tx = TX() - R, tz = TZ() - R;
+    take(Math.min(Math.max(p.x, -tx), tx) - p.x, Math.min(Math.max(p.z, -tz), tz) - p.z);
+  }
+  for (const o of obs) {
+    const dx = p.x - o.x, dz = p.z - o.z, d = Math.hypot(dx, dz);
+    if (d < 1 - EPS) { const nx = d > 1e-6 ? dx / d : 1, nz = d > 1e-6 ? dz / d : 0; take(nx * (1 - d + 1e-5), nz * (1 - d + 1e-5)); }
+  }
+  return best;
+}
+/* 여러 캔(한 덩어리)을 shift 만큼 옮기려 할 때 실제로 놓일 자리를 찾아 줌 */
+function snapGroup(members, orig, shift, magnet) {
+  const excl = new Set(members), obs = act().filter(c => !excl.has(c));
+  const modes = orig.map(o => regionOf(o.x + shift.x, o.z + shift.z));
+  const test = s => validGroup(orig, s, modes, obs);
+  const lim = members.length === 1 ? 0.45 : 0.55;
+  const gather = (single) => {
+    const list = [];
+    orig.forEach((o, i) => {
+      if (modes[i] !== 'in') return;
+      const P = { x: o.x + shift.x, z: o.z + shift.z };
+      for (const q of contactCands(P, obs, single)) {
+        const dx = q.x - P.x, dz = q.z - P.z, l = Math.hypot(dx, dz);
+        if (l < lim) list.push({ x: shift.x + dx, z: shift.z + dz, l });
+      }
+    });
+    return list.sort((a, b) => a.l - b.l);
+  };
+  if (magnet) for (const c of gather(false)) if (test(c)) return c;
+  if (test(shift)) return { ...shift };
+  if (magnet) for (const c of gather(true)) if (test(c)) return c;
+  const s = { ...shift };
+  for (let it = 0; it < 90; it++) {
+    let worst = null, wl = 0;
+    orig.forEach((o, i) => { const v = correction({ x: o.x + s.x, z: o.z + s.z }, modes[i], obs); const l = Math.hypot(v.x, v.z); if (l > wl) { wl = l; worst = v; } });
+    if (!worst || wl < 1e-7) break;
+    s.x += worst.x; s.z += worst.z;
+  }
+  if (test(s) && Math.hypot(s.x - shift.x, s.z - shift.z) < 1.2) return s;
+  return null;
+}
+
+/* =========================================================
+   배열 만들기 (정사각형 / 정육각형)
+   ========================================================= */
+function squarePositions() {
+  const b = inner(), out = [];
+  for (let x = b.x0; x <= b.x1 + EPS; x += 1) for (let z = b.z0; z <= b.z1 + EPS; z += 1) out.push({ x, z });
+  return out;
+}
+function hexPositions(vertical) {
+  const b = inner(), out = [];
+  if (vertical) {        // 세로줄을 엇갈리게 (줄 간격 0.866)
+    for (let i = 0, x = b.x0; x <= b.x1 + EPS; i++, x = b.x0 + i * S3)
+      for (let z = b.z0 + (i % 2 ? 0.5 : 0); z <= b.z1 + EPS; z += 1) out.push({ x, z });
+  } else {               // 가로줄을 엇갈리게
+    for (let j = 0, z = b.z0; z <= b.z1 + EPS; j++, z = b.z0 + j * S3)
+      for (let x = b.x0 + (j % 2 ? 0.5 : 0); x <= b.x1 + EPS; x += 1) out.push({ x, z });
+  }
+  return out;
+}
+function parkingSlots() {
+  const out = [], rows = Math.max(6, Math.ceil(H) + 3);
+  for (let side = 0; side < 2; side++)
+    for (let c = 0; c < 8; c++) for (let r = 0; r < rows; r++) {
+      const x = side === 0 ? W / 2 + T + 0.85 + c * 1.12 : -(W / 2 + T + 0.85 + c * 1.12);
+      out.push({ x, z: -H / 2 + 0.5 + r * 1.12 });
+    }
+  return out;
+}
+function findParking(obs) {
+  for (const s of parkingSlots()) if (validPoint(s.x, s.z, 'out', obs)) return s;
+  return { x: TX() - 1, z: TZ() - 1 };
+}
+/* positions 에 캔을 채우고, 남는 캔은 책상 위로 */
+function planArrange(positions) {
+  const list = act().slice().sort((a, b) => (a.special - b.special) || (a.id - b.id));
+  const moves = [], placed = [];
+  list.forEach((c, i) => { if (i < positions.length) { moves.push([c, positions[i].x, positions[i].z]); placed.push({ x: positions[i].x, z: positions[i].z }); } });
+  for (const c of list.slice(positions.length)) { const s = findParking(placed); placed.push(s); moves.push([c, s.x, s.z]); }
+  return moves;
+}
+
+/* =========================================================
+   애니메이션
+   ========================================================= */
+const clock = new THREE.Clock();
+let now = 0;
+function animateTo(moves, { dur = 0.45, stagger = 0, arc = 0.8 } = {}) {
+  moves.forEach(([c, x, z], i) => {
+    c.anim = { fx: c.mesh.position.x, fz: c.mesh.position.z, fy: c.mesh.position.y, tx: x, tz: z, t0: now + i * stagger, dur, arc };
+    c.x = x; c.z = z;
+  });
+  overlayDirty = true;
+  const total = dur + stagger * Math.max(0, moves.length - 1);
+  return new Promise(r => setTimeout(r, total * 1000 + 40));
+}
+function placeNow(c, x, z) { c.x = x; c.z = z; c.anim = null; syncMesh(c); overlayDirty = true; }
+function syncMesh(c) { c.mesh.position.set(c.x, baseY(c.x, c.z) + CAN_H / 2, c.z); }
+const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+/* =========================================================
+   상태
+   ========================================================= */
+const state = {
+  mode: 'challenge', skin: 'wood', magnet: true, sound: true, showGaps: false, showShapes: false,
+  moves: 0, t0: null, elapsed: 0, won: false, busy: false, hintLevel: 0,
+  lab: { reveal: { sq: false, hv: false, hh: false }, rows: [] },
+  quiz: { i: 0, score: 0, marks: [] },
+};
+const selected = new Set();
+const inspect = { center: null, nbrs: [] };
+const undoStack = [];
+let overlayDirty = true;
+
+function snapshot() { return act().map(c => ({ c, x: c.x, z: c.z })); }
+function pushUndo() { undoStack.push(snapshot()); if (undoStack.length > 80) undoStack.shift(); }
+async function undo() {
+  if (state.busy || !undoStack.length) { toast('더 되돌릴 수 없어요.'); return; }
+  const snap = undoStack.pop();
+  clearSel();
+  await animateTo(snap.map(s => [s.c, s.x, s.z]), { dur: 0.35, arc: 0.5 });
+  afterChange(false);
+}
+
+/* =========================================================
+   소리 (WebAudio로 짧게)
+   ========================================================= */
+let actx = null;
+function beep(freq, dur = 0.08, type = 'sine', vol = 0.18, delay = 0) {
+  if (!state.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + delay;
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.02);
+  } catch (e) { /* 소리가 안 나도 게임은 계속 */ }
+}
+const sfx = {
+  pick: () => beep(520, 0.06, 'triangle', 0.12),
+  drop: () => { beep(190, 0.09, 'square', 0.08); beep(140, 0.12, 'triangle', 0.14, 0.01); },
+  bad: () => { beep(200, 0.12, 'sawtooth', 0.08); beep(150, 0.16, 'sawtooth', 0.08, 0.1); },
+  win: () => [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.22, 'triangle', 0.16, i * 0.12)),
+  ok: () => { beep(660, 0.1, 'triangle', 0.14); beep(880, 0.14, 'triangle', 0.14, 0.09); },
+};
+
+/* =========================================================
+   화면 요소 도우미
+   ========================================================= */
+const $ = s => document.querySelector(s);
+let toastTimer = null;
+function toast(msg, ms = 2200) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
+function openModal(html) { $('#sheet').innerHTML = html; $('#modal').classList.add('show'); $('#sheet').scrollTop = 0; }
+function closeModal() { $('#modal').classList.remove('show'); }
+function fmtTime(s) { const m = Math.floor(s / 60), r = Math.floor(s % 60); return `${m}:${String(r).padStart(2, '0')}`; }
+function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+
+/* =========================================================
+   카메라 시점
+   ========================================================= */
+let camTween = null;
+// 패널·도구막대에 가리지 않는 '빈 화면 영역'의 가운데에 장면이 오도록 시야를 옮김
+const layout = { fw: 1, fh: 1, Hv: 1 };
+function applyLayout() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const panel = $('#panel').getBoundingClientRect(), tb = $('#toolbar').getBoundingClientRect();
+  const mobile = w <= 760;
+  let x0 = 0, x1 = w, y0 = 58, y1 = tb.top - 6;
+  if (panel.width > 0) {
+    if (mobile) y1 = Math.min(y1, $('#stats').getBoundingClientRect().top - 4, panel.top - 4);
+    else x1 = panel.left - 8;
+  }
+  if (!mobile) x0 = Math.min(0.1 * w, 130);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const Wv = cx < w / 2 ? 2 * (w - cx) : 2 * cx, ox = cx < w / 2 ? w - 2 * cx : 0;
+  const Hv = cy < h / 2 ? 2 * (h - cy) : 2 * cy, oy = cy < h / 2 ? h - 2 * cy : 0;
+  camera.aspect = Wv / Hv;
+  camera.setViewOffset(Wv, Hv, ox, oy, w, h);
+  camera.updateProjectionMatrix();
+  Object.assign(layout, { fw: Math.max(80, x1 - x0), fh: Math.max(80, y1 - y0), Hv });
+}
+function viewFor(kind) {
+  const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const xmin = -(W / 2 + T) - 0.2, xmax = W / 2 + T + 2.3, zr = H / 2 + T + 0.3;
+  const halfW = (xmax - xmin) / 2, halfD = zr;
+  let d = Math.max(halfW * layout.Hv / (tan * layout.fw), halfD * layout.Hv / (tan * layout.fh));
+  d *= kind === 'top' ? 1.02 : 1.08;
+  const target = new THREE.Vector3((xmin + xmax) / 2, 0, kind === 'top' ? 0 : 0.35);
+  if (kind === 'top') return { pos: new THREE.Vector3(target.x, d + CAN_H, 0.001), target };
+  return { pos: new THREE.Vector3(target.x, d * 0.8, target.z + d * 0.62), target };
+}
+function setView(kind, instant) {
+  const v = viewFor(kind);
+  state.view = kind;
+  if (instant) { camTween = null; camera.position.copy(v.pos); controls.target.copy(v.target); controls.update(); return; }
+  camTween = { fp: camera.position.clone(), ft: controls.target.clone(), tp: v.pos, tt: v.target, t0: now, dur: 0.7 };
+}
+
+/* =========================================================
+   연결선 · 도형(삼각형/사각형) 그리기
+   ========================================================= */
+const overlay = new THREE.Group(); scene.add(overlay);
+const ovLineMat = new THREE.LineBasicMaterial({ color: '#111111' });
+const ovTriMat = new THREE.MeshBasicMaterial({ color: '#fde047', transparent: true, opacity: 0.72, side: THREE.DoubleSide, depthWrite: false });
+const ovSqMat = new THREE.MeshBasicMaterial({ color: '#facc15', transparent: true, opacity: 0.72, side: THREE.DoubleSide, depthWrite: false });
+const ovDotMat = new THREE.MeshBasicMaterial({ color: '#ef4444' });
+const dotGeo = new THREE.CircleGeometry(0.07, 18);
+function rebuildOverlay() {
+  while (overlay.children.length) { const m = overlay.children.pop(); if (m.geometry !== dotGeo) m.geometry.dispose(); }
+  if (!state.showShapes) return;
+  const ins = act().filter(isInside);
+  const touch = (a, b) => Math.abs(Math.hypot(a.x - b.x, a.z - b.z) - 1) < 0.012;
+  const y = CAN_H + 0.012;
+  const pairs = [];
+  for (let i = 0; i < ins.length; i++) for (let j = i + 1; j < ins.length; j++) if (touch(ins[i], ins[j])) pairs.push([ins[i], ins[j]]);
+  const polys = [], seen = new Set();
+  const nb = new Map(ins.map(c => [c, []]));
+  for (const [a, b] of pairs) { nb.get(a).push(b); nb.get(b).push(a); }
+  for (const [a, b] of pairs) {
+    for (const c of nb.get(a)) if (c !== b && nb.get(b).includes(c)) {
+      const key = [a.id, b.id, c.id].sort((p, q) => p - q).join(',');
+      if (!seen.has(key)) { seen.add(key); polys.push({ pts: [a, b, c], mat: ovTriMat }); }
+    }
+    for (const sgn of [1, -1]) {
+      const px = -(b.z - a.z) * sgn, pz = (b.x - a.x) * sgn;
+      const c = nb.get(b).find(k => Math.abs(k.x - (b.x + px)) < 0.02 && Math.abs(k.z - (b.z + pz)) < 0.02);
+      const d = nb.get(a).find(k => Math.abs(k.x - (a.x + px)) < 0.02 && Math.abs(k.z - (a.z + pz)) < 0.02);
+      if (c && d && touch(c, d)) {
+        const key = [a.id, b.id, c.id, d.id].sort((p, q) => p - q).join(',');
+        if (!seen.has(key)) { seen.add(key); polys.push({ pts: [a, b, c, d], mat: ovSqMat }); }
+      }
+    }
+  }
+  for (const p of polys) {
+    const sh = new THREE.Shape(p.pts.map(c => new THREE.Vector2(c.x, -c.z)));
+    const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), p.mat);
+    m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = 2;
+    overlay.add(m);
+  }
+  const pos = [];
+  for (const [a, b] of pairs) pos.push(a.x, y + 0.002, a.z, b.x, y + 0.002, b.z);
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  const ls = new THREE.LineSegments(lg, ovLineMat); ls.renderOrder = 3; overlay.add(ls);
+  for (const c of ins) {
+    const d = new THREE.Mesh(dotGeo, ovDotMat); d.rotation.x = -Math.PI / 2; d.position.set(c.x, y + 0.004, c.z); d.renderOrder = 4; overlay.add(d);
+  }
+  overlay.userData.tri = polys.filter(p => p.pts.length === 3).length;
+  overlay.userData.sq = polys.filter(p => p.pts.length === 4).length;
+}
+
+/* =========================================================
+   선택 · 끌기 (마우스/터치)
+   ========================================================= */
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -CAN_H * 0.6);
+let drag = null, band = null;
+const touches = new Map();
+
+function setNDC(e) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+}
+function pickCan(e) {
+  setNDC(e); raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObjects(act().map(c => c.mesh), false);
+  return hits.length ? hits[0].object.userData.can : null;
+}
+function groundPoint(e) {
+  setNDC(e); raycaster.setFromCamera(ndc, camera);
+  const p = new THREE.Vector3();
+  return raycaster.ray.intersectPlane(dragPlane, p) ? { x: p.x, z: p.z } : null;
+}
+function clearSel() { selected.clear(); refreshGlow(); }
+function clearInspect() { inspect.center = null; inspect.nbrs = []; $('#label').style.display = 'none'; refreshGlow(); }
+
+// 끌 때 바닥에 보이는 '놓일 자리' 표시
+const ghostGeo = new THREE.RingGeometry(R * 0.78, R, 40);
+const ghostDiskGeo = new THREE.CircleGeometry(R * 0.78, 40);
+const ghostOk = new THREE.MeshBasicMaterial({ color: '#16a34a', transparent: true, opacity: 0.9, depthWrite: false });
+const ghostOkFill = new THREE.MeshBasicMaterial({ color: '#4ade80', transparent: true, opacity: 0.35, depthWrite: false });
+const ghostBad = new THREE.MeshBasicMaterial({ color: '#dc2626', transparent: true, opacity: 0.9, depthWrite: false });
+const ghostBadFill = new THREE.MeshBasicMaterial({ color: '#f87171', transparent: true, opacity: 0.35, depthWrite: false });
+const ghosts = [];
+function showGhosts(pts, ok) {
+  while (ghosts.length < pts.length) {
+    const g = new THREE.Group();
+    const ring = new THREE.Mesh(ghostGeo, ghostOk), disk = new THREE.Mesh(ghostDiskGeo, ghostOkFill);
+    ring.rotation.x = disk.rotation.x = -Math.PI / 2; g.add(ring, disk); g.renderOrder = 5;
+    scene.add(g); ghosts.push(g);
+  }
+  ghosts.forEach((g, i) => {
+    if (i >= pts.length) { g.visible = false; return; }
+    g.visible = true; g.position.set(pts[i].x, baseY(pts[i].x, pts[i].z) + 0.012, pts[i].z);
+    g.children[0].material = ok ? ghostOk : ghostBad; g.children[1].material = ok ? ghostOkFill : ghostBadFill;
+  });
+}
+const hideGhosts = () => ghosts.forEach(g => g.visible = false);
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'touch') {
+    touches.set(e.pointerId, e);
+    if (touches.size >= 2) { cancelDrag(); return; }   // 두 손가락 → 화면 돌리기/확대
+  }
+  if (e.button !== 0 || state.busy) return;
+  const can = pickCan(e);
+  const sx = e.clientX, sy = e.clientY;
+  if (can) {
+    if (!selected.has(can)) { if (!e.shiftKey && !e.ctrlKey && !e.metaKey) selected.clear(); selected.add(can); }
+    else if (e.shiftKey || e.ctrlKey || e.metaKey) { selected.delete(can); refreshGlow(); return; }
+    clearInspect(); refreshGlow();
+    const members = [...selected];
+    drag = {
+      can, members, orig: members.map(m => ({ x: m.x, z: m.z })), g0: groundPoint(e), sx, sy, moved: false, id: e.pointerId,
+      shift: { x: 0, z: 0 }, result: null, lastSnap: 0,
+    };
+    members.forEach(m => m.anim = null);
+  } else {
+    band = { sx, sy, x: sx, y: sy, id: e.pointerId, add: e.shiftKey || e.ctrlKey || e.metaKey };
+  }
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerType === 'touch' && touches.has(e.pointerId)) touches.set(e.pointerId, e);
+  if (drag && e.pointerId === drag.id) {
+    if (!drag.moved) {
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
+      drag.moved = true; sfx.pick(); clearInspect();
+      if (!state.t0 && state.mode === 'challenge' && !state.won) state.t0 = performance.now();
+    }
+    const g = groundPoint(e); if (!g || !drag.g0) return;
+    drag.shift = { x: g.x - drag.g0.x, z: g.z - drag.g0.z };
+    const small = drag.members.length <= 8;
+    if (small || now - drag.lastSnap > 0.12) {
+      drag.result = snapGroup(drag.members, drag.orig, drag.shift, state.magnet);
+      drag.lastSnap = now;
+    }
+    const s = drag.result || drag.shift;
+    showGhosts(drag.orig.map(o => ({ x: o.x + s.x, z: o.z + s.z })), !!drag.result);
+  } else if (band && e.pointerId === band.id) {
+    band.x = e.clientX; band.y = e.clientY;
+    const b = $('#band');
+    if (Math.hypot(band.x - band.sx, band.y - band.sy) > 6) {
+      b.style.display = 'block';
+      b.style.left = Math.min(band.sx, band.x) + 'px'; b.style.top = Math.min(band.sy, band.y) + 'px';
+      b.style.width = Math.abs(band.x - band.sx) + 'px'; b.style.height = Math.abs(band.y - band.sy) + 'px';
+    }
+  }
+});
+function endPointer(e) {
+  if (e.pointerType === 'touch') touches.delete(e.pointerId);
+  if (drag && e.pointerId === drag.id) {
+    const d = drag; drag = null; hideGhosts();
+    if (!d.moved) { onTap(d.can); return; }
+    const res = snapGroup(d.members, d.orig, d.shift, state.magnet);
+    if (res) {
+      undoStack.push(act().map(c => {
+        const i = d.members.indexOf(c);
+        return i >= 0 ? { c, x: d.orig[i].x, z: d.orig[i].z } : { c, x: c.x, z: c.z };
+      }));
+      const moved = Math.hypot(res.x, res.z) > 1e-4;
+      animateTo(d.members.map((m, i) => [m, d.orig[i].x + res.x, d.orig[i].z + res.z]), { dur: 0.22, arc: 0 }).then(() => { sfx.drop(); afterChange(moved); });
+    } else {
+      sfx.bad();
+      toast(d.members.length > 1 ? '그 자리엔 한꺼번에 들어갈 수 없어요. 조금 옮겨 보세요!' : '그 자리는 꽉 찼어요! 다른 곳에 놓아 보세요.');
+      animateTo(d.members.map((m, i) => [m, d.orig[i].x, d.orig[i].z]), { dur: 0.35, arc: 0 });
+    }
+  } else if (band && e.pointerId === band.id) {
+    const b = band; band = null; $('#band').style.display = 'none';
+    if (Math.hypot(b.x - b.sx, b.y - b.sy) <= 6) { if (!b.add) clearSel(); clearInspect(); return; }
+    if (!b.add) selected.clear();
+    const r = canvas.getBoundingClientRect();
+    const x0 = Math.min(b.sx, b.x), x1 = Math.max(b.sx, b.x), y0 = Math.min(b.sy, b.y), y1 = Math.max(b.sy, b.y);
+    const v = new THREE.Vector3();
+    for (const c of act()) {
+      v.set(c.x, baseY(c.x, c.z) + CAN_H, c.z).project(camera);
+      const px = r.left + (v.x + 1) / 2 * r.width, py = r.top + (1 - v.y) / 2 * r.height;
+      if (px >= x0 && px <= x1 && py >= y0 && py <= y1) selected.add(c);
+    }
+    refreshGlow();
+    if (selected.size) toast(`${selected.size}개를 골랐어요. 고른 캔 하나를 끌면 함께 움직여요.`);
+  }
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', e => { if (e.pointerType === 'touch') touches.delete(e.pointerId); cancelDrag(); });
+function cancelDrag() {
+  if (drag) {
+    const d = drag; drag = null; hideGhosts();
+    animateTo(d.members.map((m, i) => [m, d.orig[i].x, d.orig[i].z]), { dur: 0.25, arc: 0 });
+  }
+  if (band) { band = null; $('#band').style.display = 'none'; }
+}
+
+function neighborsOf(c) { return act().filter(o => o !== c && Math.hypot(o.x - c.x, o.z - c.z) < 1.012); }
+function onTap(can) {
+  if (state.mode === 'explore' || state.mode === 'lab') {
+    selected.clear();
+    inspect.center = can; inspect.nbrs = neighborsOf(can);
+    refreshGlow();
+    const l = $('#label'); l.style.display = 'block';
+    l.textContent = `맞닿은 이웃 ${inspect.nbrs.length}개`;
+    beep(700, 0.06, 'triangle', 0.1);
+  }
+}
+
+/* =========================================================
+   변화 후 처리 · 통계
+   ========================================================= */
+function afterChange(counted) {
+  if (counted) state.moves++;
+  overlayDirty = true;
+  renderStats();
+  if (state.mode === 'challenge') checkWin();
+  if (state.mode === 'explore') renderPanel();
+}
+function insideCount() { return act().filter(isInside).length; }
+function renderStats() {
+  const n = insideCount(), area = n * Math.PI / 4 / (W * H) * 100;
+  let html = '';
+  if (state.mode === 'challenge') {
+    html += `<div class="chip big ${n >= GOAL ? 'win' : ''}">상자 안 <b>${n}</b><small>/ 목표 ${GOAL}개</small></div>`;
+    html += `<div class="chip">옮긴 횟수 <b>${state.moves}</b></div>`;
+    html += `<div class="chip">시간 <b id="timeVal">${fmtTime(currentTime())}</b></div>`;
+  } else {
+    html += `<div class="chip big">상자 안 <b>${n}</b><small>개</small></div>`;
+  }
+  html += `<div class="chip">캔이 덮은 넓이 <b>${area.toFixed(1)}%</b><span class="meter"><i style="width:${Math.min(100, area)}%"></i></span></div>`;
+  $('#stats').innerHTML = html;
+}
+function currentTime() {
+  if (!state.t0) return state.elapsed;
+  return state.elapsed + (performance.now() - state.t0) / 1000;
+}
+function checkWin() {
+  const n = insideCount();
+  if (!state.won && n >= GOAL) {
+    state.won = true; state.elapsed = currentTime(); state.t0 = null;
+    const best = Number(store('cyl41-best') || 0);
+    const newBest = !best || state.moves < best;
+    if (newBest) store('cyl41-best', String(state.moves));
+    renderPanel();
+    sfx.win(); confetti();
+    setTimeout(() => openModal(`
+      <h2>🎉 성공! 41번째 캔이 들어갔어요!</h2>
+      <p class="lead">꽉 차 보이던 상자에 캔을 <b>하나 더</b> 넣었어요. 캔은 한 개도 작아지지 않았는데 어떻게 자리가 생겼을까요?</p>
+      <div class="card"><div class="kv">
+        <span>옮긴 횟수</span><b>${state.moves}번 ${newBest ? '🏅 새 기록!' : `(최고 기록 ${best}번)`}</b>
+        <span>걸린 시간</span><b>${fmtTime(state.elapsed)}</b>
+        <span>상자 안 캔</span><b>${n}개</b>
+      </div></div>
+      <div class="card"><h3>🔍 비밀은 '엇갈리게 놓기'</h3>
+      <p>줄을 엇갈리게 놓으면 캔이 옆 줄 캔 사이의 <b>홈</b>에 쏙 들어가요. 그래서 줄과 줄 사이 간격이 <b>1에서 약 0.87</b>로 줄어요.</p>
+      <p>줄 8개가 차지하던 너비(8칸)에 엇갈린 줄은 <b>9줄</b>이나 들어가요. 5개·4개·5개·4개… 이렇게 놓으면 모두 <b>41개</b>가 됩니다.</p></div>
+      <div class="btnrow"><button class="btn" data-close>계속 살펴보기</button><button class="btn primary" data-goto="explore">② 탐구하러 가기 →</button></div>
+    `), 900);
+  } else if (n > GOAL && !state.over41) {
+    state.over41 = true;
+    toast('와! 41개보다 더 넣었어요?! 선생님께 꼭 보여 주세요! 🤯', 4000);
+  }
+}
+
+/* =========================================================
+   모드별 준비
+   ========================================================= */
+function setupBox(w, h) {
+  W = w; H = h; buildTray();
+  undoStack.length = 0; selected.clear(); clearInspect();
+}
+function initChallengeLayout(animate) {
+  const sq = squarePositions();
+  const moves = planArrange(sq);
+  const sp = act().find(c => c.special);
+  if (!animate) { moves.forEach(([c, x, z]) => placeNow(c, x, z)); if (sp) { const s = findParking(act().filter(c => c !== sp)); placeNow(sp, s.x, s.z); } return Promise.resolve(); }
+  return animateTo(moves, { dur: 0.45, stagger: 0.01, arc: 0.6 });
+}
+function makeSpecial() {
+  const c = act()[act().length - 1];
+  c.special = true; applySkin(c); special = c;
+}
+async function enterMode(mode, opts = {}) {
+  if (state.busy) return;
+  state.mode = mode;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.mode === mode));
+  closeModal();
+  renderStats(); renderPanel(); applyLayout();
+  if (mode === 'challenge' || mode === 'explore') {
+    setupBox(8, 5); setCanCount(41); makeSpecial();
+    initChallengeLayout(false);
+    state.moves = 0; state.t0 = null; state.elapsed = 0; state.won = false; state.over41 = false; state.hintLevel = 0;
+    state.showShapes = mode === 'explore'; state.showGaps = false; gapPlane.visible = false;
+    setView(mode === 'explore' ? 'top' : 'tilt', opts.instant);
+  } else if (mode === 'lab') {
+    labSetup();
+    setView('top', opts.instant);
+  } else if (mode === 'quiz') {
+    setupBox(8, 5); setCanCount(41); makeSpecial();
+    planArrange(hexPositions(true)).forEach(([c, x, z]) => placeNow(c, x, z));
+    state.showShapes = true; state.showGaps = false; gapPlane.visible = false;
+    setView('top', opts.instant);
+    startQuiz();
+  }
+  overlayDirty = true;
+  renderStats(); renderPanel();
+}
+
+/* ---------- 도전: 시연 ---------- */
+async function demo() {
+  if (state.busy) return;
+  state.busy = true; clearSel(); clearInspect(); closeModal();
+  undoStack.length = 0; state.t0 = null;
+  toast('시연을 시작해요. 잘 지켜보세요! 👀', 2500);
+  setView('top');
+  await initChallengeLayout(true);
+  await wait(500);
+  const b = inner();
+  const cols = [];
+  for (let i = 0; i < 8; i++) cols.push(act().filter(c => isInside(c) && Math.abs(c.x - (b.x0 + i)) < 0.01).sort((p, q) => p.z - q.z));
+  const parked = [special];
+  toast('① 2·4·6·8번째 줄에서 캔을 하나씩 꺼내요.', 2600);
+  for (const i of [1, 3, 5, 7]) {
+    const c = cols[i].pop();
+    const s = findParking(act().filter(o => o !== c));
+    await animateTo([[c, s.x, s.z]], { dur: 0.5 }); sfx.drop(); parked.unshift(c);
+  }
+  await wait(300);
+  toast('② 줄을 반 칸 올리고 왼쪽 줄의 홈에 쏙! 끼워요.', 3200);
+  for (let i = 1; i < 8; i++) {
+    await animateTo(cols[i].map(c => [c, b.x0 + i * S3, c.z + (i % 2 ? 0.5 : 0)]), { dur: 0.55, arc: 0.5 }); sfx.drop();
+    renderStats();
+  }
+  await wait(300);
+  toast('③ 오른쪽에 새 줄 하나가 들어갈 자리가 생겼어요!', 3000);
+  for (let k = 0; k < 5; k++) {
+    await animateTo([[parked[k], b.x0 + 8 * S3, b.z0 + k]], { dur: 0.5 }); sfx.drop(); renderStats();
+  }
+  state.busy = false;
+  sfx.win();
+  openModal(`<h2>시연 끝! 41개 완성 ✨</h2>
+    <p class="lead">5개 줄 5개 + 4개 줄 4개 = <b>25 + 16 = 41개</b></p>
+    <p>엇갈린 9줄의 너비는 <b>1 + 8 × 0.87 ≈ 7.93</b>칸이라서 8칸 상자에 들어가요.</p>
+    <p class="muted">이제 '처음부터'를 눌러 직접 해 보세요. 캔을 하나하나 옮기는 게 진짜 공부예요!</p>
+    <div class="btnrow"><button class="btn" data-close>닫기</button><button class="btn primary" data-act="reset">직접 도전하기</button></div>`);
+  state.won = true; renderStats();
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- 탐구 ---------- */
+async function exploreArrange(kind) {
+  if (state.busy) return;
+  state.busy = true; clearSel(); clearInspect(); pushUndo();
+  const pos = kind === 'square' ? squarePositions() : hexPositions(true);
+  await animateTo(planArrange(pos), { dur: 0.5, stagger: 0.012, arc: 0.7 });
+  state.busy = false; sfx.ok(); afterChange(false);
+}
+
+/* ---------- 실험실 ---------- */
+function labCounts() {
+  return { sq: squarePositions().length, hv: hexPositions(true).length, hh: hexPositions(false).length };
+}
+function labSetup() {
+  setupBox(state.lab.w || 8, state.lab.h || 5);
+  const k = labCounts();
+  setCanCount(Math.max(k.sq, k.hv, k.hh) + 2);
+  planArrange([]).forEach(([c, x, z]) => placeNow(c, x, z));
+  planArrange(squarePositions()).forEach(([c, x, z]) => placeNow(c, x, z));
+  state.lab.reveal = { sq: true, hv: false, hh: false };
+  state.showShapes = true; state.showGaps = false; gapPlane.visible = false;
+  overlayDirty = true;
+}
+async function labArrange(kind) {
+  if (state.busy) return;
+  state.busy = true; clearSel(); clearInspect(); pushUndo();
+  const pos = kind === 'sq' ? squarePositions() : hexPositions(kind === 'hv');
+  state.lab.reveal[kind] = true;
+  await animateTo(planArrange(pos), { dur: 0.5, stagger: 0.008, arc: 0.7 });
+  state.busy = false; sfx.ok(); afterChange(false); renderPanel();
+}
+function labResize(dw, dh) {
+  if (state.busy) return;
+  const w = Math.min(10, Math.max(2, (state.lab.w || 8) + dw)), h = Math.min(7, Math.max(2, (state.lab.h || 5) + dh));
+  state.lab.w = w; state.lab.h = h;
+  labSetup(); setView('top'); renderStats(); renderPanel();
+}
+function labRecord() {
+  const k = labCounts(), hex = Math.max(k.hv, k.hh);
+  const row = { w: W, h: H, sq: k.sq, hex };
+  if (!state.lab.rows.some(r => r.w === row.w && r.h === row.h)) state.lab.rows.push(row);
+  renderPanel(); sfx.ok();
+}
+
+/* =========================================================
+   패널 내용
+   ========================================================= */
+const HINTS = [
+  '<b>힌트 1</b> — [위에서] 버튼을 눌러 내려다보세요. 캔 4개 사이에 생긴 <b>틈</b>이 꽤 크죠? 이 틈을 줄이면 자리가 생겨요.',
+  '<b>힌트 2</b> — 벌집처럼 한 줄씩 <b>엇갈리게</b> 놓으면 캔이 옆 줄 캔 사이의 <b>홈</b>에 쏙 들어가요. 그러면 줄과 줄 사이가 1보다 가까워져요.',
+  '<b>힌트 3</b> — 2·4·6·8번째 세로줄에서 캔을 <b>1개씩 꺼내</b> 상자 밖에 두세요. 남은 4개를 반 칸 올려 왼쪽 줄의 홈에 끼우고, 모든 줄을 차례로 왼쪽으로 붙이면 오른쪽에 <b>새 줄 하나</b>가 들어갈 자리가 생겨요!',
+];
+const SVG_COMPARE = `
+<svg viewBox="0 0 300 150" width="100%" role="img" aria-label="정사각형 틈과 정삼각형 틈 비교">
+  <g transform="translate(10,10)">
+    <rect x="30" y="30" width="60" height="60" fill="#facc15" stroke="#111" stroke-width="1.5"/>
+    <g fill="#e2a877" fill-opacity=".8" stroke="#7a4a1a" stroke-width="1.5">
+      <circle cx="30" cy="30" r="30"/><circle cx="90" cy="30" r="30"/><circle cx="30" cy="90" r="30"/><circle cx="90" cy="90" r="30"/>
+    </g>
+    <g fill="#ef4444"><circle cx="30" cy="30" r="3"/><circle cx="90" cy="30" r="3"/><circle cx="30" cy="90" r="3"/><circle cx="90" cy="90" r="3"/></g>
+    <text x="60" y="137" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">정사각형 틈 (캔 4개)</text>
+  </g>
+  <g transform="translate(160,10)">
+    <polygon points="30,95 90,95 60,43" fill="#facc15" stroke="#111" stroke-width="1.5"/>
+    <g fill="#e2a877" fill-opacity=".8" stroke="#7a4a1a" stroke-width="1.5">
+      <circle cx="30" cy="95" r="30"/><circle cx="90" cy="95" r="30"/><circle cx="60" cy="43" r="30"/>
+    </g>
+    <g fill="#ef4444"><circle cx="30" cy="95" r="3"/><circle cx="90" cy="95" r="3"/><circle cx="60" cy="43" r="3"/></g>
+    <text x="60" y="137" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">정삼각형 틈 (캔 3개)</text>
+  </g>
+</svg>`;
+function renderPanel() {
+  const body = $('#panelBody'), title = $('#panelTitle');
+  const m = state.mode;
+  if (m === 'challenge') {
+    title.textContent = '① 도전 — 하나 더 넣기';
+    let hints = '';
+    for (let i = 0; i < state.hintLevel; i++) hints += `<div class="card hint"><p>${HINTS[i]}</p></div>`;
+    body.innerHTML = `
+      <div class="card mission"><h3>🎯 미션</h3>
+        <p>상자 안에 캔 <b>40개</b>가 꽉 차 있어요. 책상 위에 있는 <b>★+1 캔</b>까지 <b>41개</b>를 모두 상자에 넣어 보세요!</p>
+        <p class="muted">캔은 작아지지 않아요. 캔끼리 겹치거나 벽을 뚫을 수도 없어요. 놓는 방법만 바꿀 수 있답니다.</p></div>
+      <div class="card"><h3>🖐️ 이렇게 옮겨요</h3>
+        <p>• 캔을 <b>누른 채 끌면</b> 들어 올려져요. 초록 동그라미는 놓일 자리, 빨강은 놓을 수 없는 자리예요.</p>
+        <p>• <b>빈 곳을 끌어</b> 네모를 그리면 여러 캔을 한꺼번에 골라요. 고른 캔 하나를 끌면 모두 함께 움직여요.</p>
+        <p>• 🧲 <b>자석</b>을 켜 두면 놓을 때 이웃 캔 사이의 홈에 딱 맞춰 줘요.</p></div>
+      ${hints}
+      <div class="btnrow">
+        ${state.hintLevel < HINTS.length ? `<button class="btn" data-act="hint">💡 힌트 보기 (${state.hintLevel + 1}/${HINTS.length})</button>` : ''}
+        <button class="btn" data-act="demo">🎬 시연 보기</button>
+      </div>
+      <p class="muted" style="margin-top:10px">최고 기록: ${store('cyl41-best') ? store('cyl41-best') + '번 만에 성공' : '아직 없어요'}</p>`;
+  } else if (m === 'explore') {
+    title.textContent = '② 탐구 — 두 구조 비교하기';
+    const n = insideCount();
+    const ud = overlay.userData;
+    body.innerHTML = `
+      <div class="card mission"><h3>🔬 두 가지 구조를 바꿔 가며 살펴봐요</h3>
+        <div class="btnrow">
+          <button class="btn" data-act="exSquare">⬛ 정사각형 구조 (40개)</button>
+          <button class="btn" data-act="exHex">⬢ 정육각형 구조 (41개)</button>
+        </div>
+        <div class="btnrow">
+          <button class="btn ${state.showShapes ? 'on' : ''}" data-act="toggleShapes">📐 연결 도형 보기</button>
+          <button class="btn ${state.showGaps ? 'on' : ''}" data-act="toggleGaps">🟦 빈 틈 색칠</button>
+        </div>
+        <p class="muted" style="margin-top:6px">지금 상자 안: <b>${n}개</b>${state.showShapes && ud.sq !== undefined ? ` · 노란 정사각형 ${ud.sq}개 · 노란 정삼각형 ${ud.tri}개` : ''}</p>
+      </div>
+      <div class="card"><h3>👆 이웃 세어 보기</h3>
+        <p>캔을 <b>톡</b> 누르면 맞닿은 이웃 캔이 초록색으로 빛나요. 가운데 있는 캔을 눌러 보세요.</p>
+        <p>정사각형 구조: 이웃 <b>4개</b> / 정육각형 구조: 이웃 <b>6개</b></p></div>
+      <div class="card"><h3>🟨 틈의 크기 비교</h3>${SVG_COMPARE}
+        <p>캔 4개가 둘러싼 <b>정사각형 틈</b>보다 캔 3개가 둘러싼 <b>정삼각형 틈</b>이 훨씬 작아요.</p>
+        <p>캔 하나당 버려지는 틈을 비교하면 정사각형 구조가 약 <b>2.7배</b> 더 커요.</p></div>
+      <div class="card"><h3>📏 너비를 재 보면</h3>
+        <div class="kv">
+          <span>정사각형</span><span>줄 간격 1 × 8줄 = <b>8칸</b> → 5개씩 8줄 = <b>40개</b></span>
+          <span>정육각형</span><span>줄 간격 약 0.87 → 1 + 8 × 0.87 ≈ <b>7.93칸</b> → 9줄! 5+4+5+4+5+4+5+4+5 = <b>41개</b></span>
+        </div>
+        <p class="muted" style="margin-top:6px">0.87은 한 변이 1인 정삼각형의 높이예요. 옆 줄 캔 사이 홈에 캔이 쏙 들어가서 줄이 서로 가까워지는 거예요.</p></div>
+      <div class="card"><h3>📊 넓이로 보면</h3>
+        <p>아주 넓은 바닥을 채운다면 캔이 덮는 넓이는 정사각형 구조 약 <b>79%</b>, 정육각형 구조 약 <b>91%</b>예요. 그래서 벌은 벌집을 육각형으로 짓고, 과일 가게는 오렌지를 엇갈리게 쌓아요.</p></div>`;
+  } else if (m === 'lab') {
+    title.textContent = '③ 실험실 — 언제나 육각형이 이길까?';
+    const k = labCounts(), rv = state.lab.reveal;
+    const v = (key) => rv[key] ? `<span class="val">${k[key]}</span>` : `<span class="val">?</span>`;
+    const rows = state.lab.rows.map(r => `<tr><td>${r.w}×${r.h}</td><td>${r.sq}</td><td>${r.hex}</td><td>${r.hex > r.sq ? '⬢ 육각형' : r.hex < r.sq ? '⬛ 정사각형' : '🤝 같음'}</td></tr>`).join('');
+    body.innerHTML = `
+      <div class="card mission"><h3>🧪 상자 크기를 바꿔 실험해요</h3>
+        <p>8×5 상자에서는 정육각형 구조가 1개 더 들어갔어요. 그럼 <b>어떤 상자</b>에서든 육각형이 이길까요? 먼저 예측해 보고 확인해 보세요!</p>
+        <div class="stepper"><label>가로</label><button data-act="w-">−</button><output>${W}</output><button data-act="w+">＋</button></div>
+        <div class="stepper"><label>세로</label><button data-act="h-">−</button><output>${H}</output><button data-act="h+">＋</button></div>
+      </div>
+      <div class="card"><h3>배열 버튼을 눌러 확인</h3>
+        <div class="reveal">
+          <button class="btn" data-act="lab-sq">⬛ 정사각형으로 채우기</button>${v('sq')}
+          <button class="btn" data-act="lab-hv">⬢ 세로줄 엇갈리기</button>${v('hv')}
+          <button class="btn" data-act="lab-hh">⬢ 가로줄 엇갈리기</button>${v('hh')}
+        </div>
+        <div class="btnrow"><button class="btn primary" data-act="lab-rec" ${rv.sq && rv.hv && rv.hh ? '' : 'disabled'}>📝 기록표에 적기</button></div>
+        <p class="muted">세 가지를 모두 확인하면 기록할 수 있어요. 캔을 직접 끌어서 더 넣어 봐도 좋아요!</p></div>
+      <div class="card"><h3>📋 기록표</h3>
+        ${rows ? `<table class="rec"><tr><th>상자</th><th>⬛</th><th>⬢(더 많은 쪽)</th><th>이긴 쪽</th></tr>${rows}</table>` : '<p class="muted">아직 기록이 없어요. 2×2, 4×3, 8×5, 10×7 상자를 꼭 실험해 보세요.</p>'}
+      </div>
+      <div class="card hint"><p><b>생각해 볼 점</b> — 상자가 작으면 벽 근처에 생기는 빈 곳 때문에 육각형 구조가 손해를 볼 때가 있어요. 상자가 클수록 육각형 구조의 장점이 커진답니다.</p></div>`;
+  } else if (m === 'quiz') {
+    title.textContent = '④ 퀴즈 — 배운 것 확인';
+    body.innerHTML = `<div class="card mission"><h3>📝 퀴즈를 풀고 있어요</h3><p>화면 가운데 문제를 풀어 보세요. 뒤에 보이는 것은 41개가 들어간 정육각형 구조예요.</p>
+      <div class="btnrow"><button class="btn" data-act="quizOpen">문제 다시 열기</button></div></div>`;
+  }
+}
+
+/* =========================================================
+   퀴즈
+   ========================================================= */
+const QUIZ = [
+  { q: '정사각형 구조에서 가운데 있는 캔 하나는 몇 개의 캔과 맞닿아 있을까요?', o: ['3개', '4개', '6개', '8개'], a: 1,
+    e: '위·아래·왼쪽·오른쪽, 모두 <b>4개</b>와 맞닿아요. 대각선 방향 캔과는 떨어져 있어서 그 사이에 큰 틈이 생겨요.' },
+  { q: '정육각형(벌집) 구조에서 가운데 있는 캔 하나는 몇 개의 캔과 맞닿아 있을까요?', o: ['4개', '5개', '6개', '8개'], a: 2,
+    e: '둘레에 <b>6개</b>가 빙 둘러 맞닿아요. 이웃을 이은 모양이 정육각형이라서 정육각형 구조라고 불러요.' },
+  { q: '캔 사이의 빈 틈이 더 작은 것은 무엇일까요?', o: ['캔 4개가 둘러싼 정사각형 틈', '캔 3개가 둘러싼 정삼각형 틈', '둘 다 똑같아요'], a: 1,
+    e: '<b>정삼각형 틈</b>이 훨씬 작아요. 틈이 작을수록 같은 공간에 캔을 더 많이 넣을 수 있어요.' },
+  { q: '줄을 엇갈리게 놓으면, 줄과 줄 사이 간격은 캔 지름(1)과 비교해 어떻게 될까요?', o: ['더 길어져요', '똑같아요', '약 0.87로 짧아져요'], a: 2,
+    e: '캔이 옆 줄 캔 사이 <b>홈</b>에 들어가서 줄 간격이 약 <b>0.87</b>로 줄어요. 그래서 8칸 너비에 9줄이 들어가요.' },
+  { q: '8×5 상자에 정육각형 구조로 넣으면 5개짜리 줄 5개와 4개짜리 줄 4개가 생겨요. 모두 몇 개일까요?', o: ['40개', '41개', '45개'], a: 1,
+    e: '5 × 5 = 25, 4 × 4 = 16, 25 + 16 = <b>41개</b>예요. 정사각형 구조(40개)보다 1개 더 많아요!' },
+  { q: '가로 2, 세로 2인 아주 작은 상자에서도 정육각형 구조가 더 많이 들어갈까요?', o: ['네, 항상 육각형이 더 많아요', '아니요, 정사각형 구조가 더 많아요'], a: 1,
+    e: '2×2 상자에는 정사각형으로 <b>4개</b>, 엇갈리게 놓으면 <b>3개</b>만 들어가요. 상자가 작으면 벽 쪽 빈 곳이 커져서 육각형이 손해예요. <b>항상</b>이라는 말은 조심!' },
+  { q: '원을 촘촘하게 모은 정육각형 구조를 자연에서 볼 수 있는 곳은 어디일까요?', o: ['벌집', '거미줄', '나이테'], a: 0,
+    e: '<b>벌집</b>은 적은 재료로 가장 넓은 공간을 빈틈없이 만드는 육각형 구조예요. 과일 가게의 오렌지 쌓기도 같은 원리예요.' },
+];
+function startQuiz() { state.quiz = { i: 0, score: 0, marks: [] }; showQuestion(); }
+function showQuestion() {
+  const qz = state.quiz;
+  if (qz.i >= QUIZ.length) return showQuizEnd();
+  const Q = QUIZ[qz.i];
+  const prog = QUIZ.map((_, i) => `<i class="${i < qz.i ? (qz.marks[i] ? 'done' : 'miss') : i === qz.i ? 'cur' : ''}"></i>`).join('');
+  openModal(`<div class="qprog">${prog}</div>
+    <p class="muted">문제 ${qz.i + 1} / ${QUIZ.length}</p>
+    <h2 style="font-size:20px;color:inherit">${Q.q}</h2>
+    <div class="qopts">${Q.o.map((o, i) => `<button class="qopt" data-opt="${i}">${o}</button>`).join('')}</div>
+    <div class="qexp" id="qexp"></div>
+    <div class="btnrow"><button class="btn primary" id="qnext" style="display:none">다음 문제 →</button></div>`);
+}
+function answer(i) {
+  const qz = state.quiz, Q = QUIZ[qz.i];
+  if (qz.marks.length > qz.i) return;
+  const ok = i === Q.a; qz.marks.push(ok); if (ok) qz.score++;
+  document.querySelectorAll('.qopt').forEach((b, k) => { b.disabled = true; if (k === Q.a) b.classList.add('right'); else if (k === i) b.classList.add('wrong'); });
+  const ex = $('#qexp'); ex.innerHTML = (ok ? '⭕ <b>정답!</b> ' : '❌ <b>아쉬워요.</b> ') + Q.e; ex.classList.add('show');
+  const nx = $('#qnext'); nx.style.display = ''; nx.textContent = qz.i + 1 < QUIZ.length ? '다음 문제 →' : '결과 보기 →';
+  ok ? sfx.ok() : sfx.bad();
+}
+function showQuizEnd() {
+  const s = state.quiz.score, n = QUIZ.length;
+  const msg = s === n ? '완벽해요! 원기둥 박사 인증 🏅' : s >= n - 2 ? '아주 잘했어요! 틀린 문제는 탐구 화면에서 다시 확인해 봐요.' : '괜찮아요! ② 탐구로 돌아가 캔을 직접 옮겨 보며 다시 도전해요.';
+  if (s === n) { confetti(); sfx.win(); }
+  openModal(`<h2>퀴즈 결과</h2><div class="bigscore">${s} / ${n}</div><p class="lead" style="text-align:center">${msg}</p>
+    <div class="card"><h3>오늘 배운 것 한 줄 정리</h3>
+    <p>같은 캔이라도 <b>놓는 방법</b>을 바꾸면 빈 틈이 줄어 더 많이 들어갈 수 있어요. 엇갈리게 놓는 정육각형 구조는 틈이 작아서, 넓은 곳일수록 더 효율적이에요.</p></div>
+    <div class="btnrow"><button class="btn" data-act="quizRestart">다시 풀기</button><button class="btn primary" data-goto="challenge">① 도전으로</button></div>`);
+}
+
+/* =========================================================
+   축하 효과
+   ========================================================= */
+const fx = $('#fx'), fg = fx.getContext('2d');
+let parts = [];
+function confetti() {
+  fx.width = innerWidth; fx.height = innerHeight;
+  const cols = ['#f59f00', '#e8590c', '#2f9e44', '#1971c2', '#e64980', '#fab005'];
+  for (let i = 0; i < 160; i++) parts.push({ x: innerWidth / 2 + (Math.random() - .5) * 200, y: innerHeight * 0.35, vx: (Math.random() - .5) * 14, vy: -Math.random() * 14 - 4, r: Math.random() * 6 + 4, c: cols[i % cols.length], a: Math.random() * 6, life: 1 });
+}
+function drawFx() {
+  if (!parts.length) return;
+  fg.clearRect(0, 0, fx.width, fx.height);
+  for (const p of parts) {
+    p.vy += 0.35; p.x += p.vx; p.y += p.vy; p.vx *= 0.99; p.a += 0.15; p.life -= 0.006;
+    fg.save(); fg.translate(p.x, p.y); fg.rotate(p.a); fg.globalAlpha = Math.max(0, p.life);
+    fg.fillStyle = p.c; fg.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2); fg.restore();
+  }
+  parts = parts.filter(p => p.life > 0 && p.y < fx.height + 40);
+  if (!parts.length) fg.clearRect(0, 0, fx.width, fx.height);
+}
+
+/* =========================================================
+   버튼 처리
+   ========================================================= */
+function helpModal(first) {
+  openModal(`<h2>🥫 원기둥 하나 더 넣기</h2>
+    <p class="lead">상자에 원기둥 <b>40개</b>가 빈틈없이 꽉 찼어요. 그런데 누군가 말했어요. <b>"여기에 하나 더 넣을 수 있어!"</b> 정말일까요?</p>
+    <ul>
+      <li><span>🖐️</span><span><b>캔 끌기</b>: 캔을 누른 채 끌면 들어 올려 옮길 수 있어요. 바닥의 초록 동그라미가 놓일 자리예요.</span></li>
+      <li><span>🔲</span><span><b>여러 개 고르기</b>: 빈 곳을 끌어 네모를 그리면 여러 캔을 한 번에 골라요. (Shift+클릭으로 하나씩 더하기)</span></li>
+      <li><span>🧲</span><span><b>자석</b>: 놓을 때 이웃 캔 사이 홈에 딱 맞춰 줘요. 끄면 원하는 곳에 자유롭게 놓을 수 있어요.</span></li>
+      <li><span>🔄</span><span><b>화면 돌리기</b>: 마우스 오른쪽 버튼으로 끌거나 두 손가락으로 돌려요. 휠이나 손가락 벌리기로 확대해요.</span></li>
+      <li><span>↩️</span><span><b>되돌리기</b>: 실수했으면 되돌리기(Ctrl+Z)를 눌러요.</span></li>
+    </ul>
+    <div class="card"><b>학습 순서</b> — ① 도전: 직접 41개 넣기 → ② 탐구: 두 구조 비교 → ③ 실험실: 상자 크기 바꿔 보기 → ④ 퀴즈</div>
+    <div class="btnrow"><button class="btn primary" data-close>${first ? '도전 시작! 🚀' : '닫기'}</button></div>`);
+}
+async function doAct(a) {
+  switch (a) {
+    case 'undo': return undo();
+    case 'viewTop': return setView('top');
+    case 'viewTilt': return setView('tilt');
+    case 'magnet':
+      state.magnet = !state.magnet;
+      document.querySelector('[data-act=magnet]').classList.toggle('on', state.magnet);
+      return toast(state.magnet ? '🧲 자석 켜짐: 홈에 딱 맞춰 놓아 줘요.' : '자석 꺼짐: 원하는 곳에 자유롭게 놓아요.');
+    case 'deselect': clearSel(); clearInspect(); return;
+    case 'skin':
+      state.skin = state.skin === 'wood' ? 'can' : 'wood';
+      cans.forEach(applySkin);
+      document.querySelector('[data-act=skin] span').textContent = state.skin === 'wood' ? '🪵' : '🥫';
+      return toast(state.skin === 'wood' ? '나무 원기둥으로 바꿨어요.' : '음료 캔으로 바꿨어요.');
+    case 'sound':
+      state.sound = !state.sound;
+      document.querySelector('[data-act=sound] span').textContent = state.sound ? '🔊' : '🔇';
+      return;
+    case 'reset': closeModal(); if (state.mode === 'lab') { labSetup(); renderStats(); renderPanel(); return; } return enterMode(state.mode === 'quiz' ? 'challenge' : state.mode);
+    case 'hint':
+      state.hintLevel = Math.min(HINTS.length, state.hintLevel + 1);
+      if (state.hintLevel === 1) setView('top');
+      renderPanel(); $('#panelBody').scrollTop = 1e4; return;
+    case 'demo': return demo();
+    case 'exSquare': return exploreArrange('square');
+    case 'exHex': return exploreArrange('hex');
+    case 'toggleShapes': state.showShapes = !state.showShapes; overlayDirty = true; if (state.showShapes) setView('top'); rebuildOverlay(); overlayDirty = false; return renderPanel();
+    case 'toggleGaps': state.showGaps = !state.showGaps; gapPlane.visible = state.showGaps; if (state.showGaps) setView('top'); return renderPanel();
+    case 'w-': return labResize(-1, 0);
+    case 'w+': return labResize(1, 0);
+    case 'h-': return labResize(0, -1);
+    case 'h+': return labResize(0, 1);
+    case 'lab-sq': return labArrange('sq');
+    case 'lab-hv': return labArrange('hv');
+    case 'lab-hh': return labArrange('hh');
+    case 'lab-rec': return labRecord();
+    case 'quizOpen': return state.quiz.i >= QUIZ.length ? showQuizEnd() : showQuestion();
+    case 'quizRestart': return startQuiz();
+  }
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act],[data-mode],[data-goto],[data-close],[data-opt],#qnext');
+  if (!t) return;
+  if (t.dataset.mode) return enterMode(t.dataset.mode);
+  if (t.dataset.goto) return enterMode(t.dataset.goto);
+  if (t.hasAttribute('data-close')) return closeModal();
+  if (t.dataset.opt !== undefined) return answer(Number(t.dataset.opt));
+  if (t.id === 'qnext') { state.quiz.i++; return showQuestion(); }
+  doAct(t.dataset.act);
+});
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal' && state.mode !== 'quiz') closeModal(); });
+$('#helpBtn').addEventListener('click', () => helpModal(false));
+$('#panelToggle').addEventListener('click', () => {
+  const p = $('#panel'); p.classList.toggle('collapsed');
+  $('#panelToggle').textContent = p.classList.contains('collapsed') ? '펼치기' : '접기';
+  applyLayout(); setView(state.view || 'tilt');
+});
+window.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+  else if (e.key === 'Escape') { clearSel(); clearInspect(); closeModal(); }
+});
+
+/* =========================================================
+   크기 맞추기 · 반복 그리기
+   ========================================================= */
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  applyLayout();
+}
+window.addEventListener('resize', () => { resize(); setView(state.view || 'tilt', true); });
+
+const tmpV = new THREE.Vector3();
+function loop() {
+  requestAnimationFrame(loop);
+  const dt = clock.getDelta(); now += dt;
+  let animating = false;
+  for (const c of cans) {
+    if (!c.active) continue;
+    if (drag && drag.moved && drag.members.includes(c)) {
+      const i = drag.members.indexOf(c);
+      const x = drag.orig[i].x + drag.shift.x, z = drag.orig[i].z + drag.shift.z;
+      c.mesh.position.x += (x - c.mesh.position.x) * 0.5;
+      c.mesh.position.z += (z - c.mesh.position.z) * 0.5;
+      c.mesh.position.y += (CAN_H / 2 + LIFT - c.mesh.position.y) * 0.3;
+    } else if (c.anim) {
+      const a = c.anim, t = Math.min(1, Math.max(0, (now - a.t0) / a.dur)), e = ease(t);
+      c.mesh.position.x = a.fx + (a.tx - a.fx) * e;
+      c.mesh.position.z = a.fz + (a.tz - a.fz) * e;
+      c.mesh.position.y = a.fy + (baseY(a.tx, a.tz) + CAN_H / 2 - a.fy) * e + Math.sin(Math.PI * e) * a.arc;
+      if (t >= 1) { c.anim = null; syncMesh(c); overlayDirty = true; } else animating = true;
+    }
+  }
+  if (camTween) {
+    const t = Math.min(1, (now - camTween.t0) / camTween.dur), e = ease(t);
+    camera.position.lerpVectors(camTween.fp, camTween.tp, e);
+    controls.target.lerpVectors(camTween.ft, camTween.tt, e);
+    if (t >= 1) camTween = null;
+  }
+  controls.update();
+  const moving = animating || (drag && drag.moved);
+  overlay.visible = !moving;
+  if (!moving && overlayDirty) {
+    overlayDirty = false; rebuildOverlay();
+    if (state.mode === 'explore') renderPanel();
+  }
+  if (inspect.center) {
+    const c = inspect.center, r = canvas.getBoundingClientRect();
+    tmpV.set(c.mesh.position.x, c.mesh.position.y + CAN_H / 2, c.mesh.position.z).project(camera);
+    const l = $('#label'); l.style.left = (r.left + (tmpV.x + 1) / 2 * r.width) + 'px'; l.style.top = (r.top + (1 - tmpV.y) / 2 * r.height) + 'px';
+  }
+  if (state.mode === 'challenge' && state.t0) { const tv = document.getElementById('timeVal'); if (tv) tv.textContent = fmtTime(currentTime()); }
+  drawFx();
+  renderer.render(scene, camera);
+}
+
+/* 시작 */
+resize();
+state.view = 'tilt';
+enterMode('challenge', { instant: true });
+helpModal(true);
+loop();
+
+// 자동 점검용 (콘솔에서 확인 가능)
+window.__game = { state, cans, act, insideCount, snapGroup, squarePositions, hexPositions, enterMode, demo, W: () => W, H: () => H, camera, canvas };
+</script>
+</body>
+</html>
