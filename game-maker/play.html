@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>친구 게임 하기</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="wrap" style="max-width:1000px">
+  <div class="topbar">
+    <a class="brand" href="./">🤖 AI와 게임 만들기</a>
+    <nav class="nav">
+      <a href="./">✏️ 만들기</a>
+      <a href="gallery.html">🎮 우리반 게임</a>
+      <a href="../">🌱 곶자왈 게임</a>
+    </nav>
+  </div>
+
+  <div class="card">
+    <h2 id="title">불러오는 중… ⏳</h2>
+    <p class="hint" id="by"></p>
+    <div id="err" class="err hidden"></div>
+    <div class="stage hidden" id="stage" style="margin-top:12px">
+      <iframe id="frame" sandbox="allow-scripts" allow="fullscreen; autoplay" allowfullscreen title="친구 게임"></iframe>
+    </div>
+    <div class="btns" id="btns" style="display:none">
+      <button class="btn" id="fullscreen">⛶ 크게 보기</button>
+      <button class="btn" id="replay">🔁 처음부터</button>
+      <a class="btn" href="gallery.html">🎮 다른 게임 보기</a>
+    </div>
+  </div>
+
+  <div class="card hidden" id="ideaCard">
+    <h2>💡 이 게임의 아이디어</h2>
+    <p class="hint" style="margin-top:8px"><b>어떤 게임?</b></p>
+    <p id="concept" style="white-space:pre-wrap"></p>
+    <p class="hint" style="margin-top:10px"><b>규칙</b></p>
+    <p id="rules" style="white-space:pre-wrap"></p>
+  </div>
+
+  <footer>© 무릉초 2학년 · 행복한 골든반</footer>
+</div>
+
+<script src="../supabase-config.js"></script>
+<script src="api.js"></script>
+<script>
+(async function () {
+  var GM = window.GameMaker;
+  var $ = function (id) { return document.getElementById(id); };
+  var id = new URLSearchParams(location.search).get("id");
+  function fail(msg) { $("title").textContent = "😢 게임을 찾을 수 없어요"; $("err").textContent = msg; $("err").classList.remove("hidden"); }
+  if (!id) return fail("주소가 잘못되었어요.");
+  try {
+    var g = await GM.getGame(id);
+    if (!g) return fail("지워졌거나 숨겨진 게임이에요.");
+    document.title = g.title;
+    $("title").textContent = "🎮 " + g.title;
+    $("by").textContent = "만든 친구: " + g.author;
+    $("frame").srcdoc = g.html;
+    $("stage").classList.remove("hidden");
+    $("btns").style.display = "";
+    $("replay").onclick = function () { $("frame").srcdoc = g.html; };
+    $("fullscreen").onclick = function () {
+      var f = $("frame");
+      (f.requestFullscreen || f.webkitRequestFullscreen || function () {}).call(f);
+    };
+    if (g.concept || g.rules) {
+      $("concept").textContent = g.concept || "-";
+      $("rules").textContent = g.rules || "-";
+      $("ideaCard").classList.remove("hidden");
+    }
+  } catch (e) {
+    fail(GM.friendlyError(e));
+  }
+})();
+</script>
+</body>
+</html>
