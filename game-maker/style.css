@@ -164,6 +164,51 @@ textarea { min-height: 120px; resize: vertical; }
 
 footer { text-align: center; margin-top: 30px; color: #b08a55; font-size: 13px; }
 
+/* 저장 / 불러오기 줄 */
+.filebar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: -6px 0 16px; }
+.btn.small { padding: 8px 14px; font-size: 16px; border-width: 2px; }
+
+/* 그림 넣기 */
+.imgs { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.imgs:empty { display: none; }
+.imgcard {
+  width: 170px; background: #fffdf8; border: 3px solid #ffe2a8; border-radius: 16px; padding: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.imgthumb {
+  position: relative; height: 120px; border-radius: 12px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: repeating-conic-gradient(#f1e6d2 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+}
+.imgthumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.imgx {
+  position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(58, 36, 16, .7); color: #fff; font-size: 15px; font-weight: 800;
+}
+.imgcard input[type=text] { font-size: 15px; padding: 8px 10px; border-width: 2px; border-radius: 10px; }
+.bgopt { font-size: 14px; color: var(--ink-soft); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.bgopt input { width: 18px; height: 18px; }
+
+/* PRO */
+.pro-banner {
+  background: linear-gradient(90deg, #5f3dc4, #9c36b5); color: #fff; border-radius: 18px;
+  padding: 12px 16px; margin-bottom: 16px; font-weight: 700; font-size: 16px;
+  box-shadow: 0 8px 24px rgba(95, 61, 196, .3);
+}
+body.pro {
+  --bg1: #f3f0ff; --bg2: #e5dbff;
+  --accent: #5f3dc4; --accent-2: #7048e8; --line: #d0bfff;
+  --shadow: 0 10px 30px rgba(95, 61, 196, 0.16);
+}
+body.pro input[type=text], body.pro textarea { border-color: #e5dbff; background: #fcfbff; }
+body.pro .steps .s.done { background: #e5dbff; color: var(--accent); }
+body.pro .q { border-top-color: #e5dbff; }
+body.pro .choice { border-color: #e5dbff; }
+body.pro .imgcard { border-color: #e5dbff; background: #fcfbff; }
+body.pro .bar { background: #e5dbff; }
+body.pro .bar > i { background: linear-gradient(90deg, #9775fa, #7048e8, #ae3ec9); }
+body.pro footer { color: #9775fa; }
+
 @media (max-width: 520px) {
   body { font-size: 17px; }
   .card { padding: 18px 14px; border-radius: 20px; }

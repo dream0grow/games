@@ -35,7 +35,8 @@ npx supabase functions deploy game-maker --project-ref lanootakxybeshnsrnyu
 - `CLASS_CODE` 는 **교실 코드**예요. 아이들이 처음 AI를 쓸 때 한 번 입력합니다(그 기기에 기억됨).
   링크가 밖으로 퍼져도 모르는 사람이 선생님 API 키를 쓰지 못하게 막아 줍니다. 꼭 설정하세요.
   바꾸고 싶으면 같은 명령으로 다시 설정하면 바로 적용돼요.
-- (선택) 모델 바꾸기: 기본은 `claude-sonnet-5-5`(빠르고 저렴). 더 정교하게 만들고 싶으면 `GAME_MODEL=claude-opus-5-5` 로 설정하세요.
+- 기본(`game-maker/`)은 `claude-sonnet-5-5`, PRO(`game-maker/pro/`)는 `claude-opus-5-5` 를 씁니다. 바꾸려면 `GAME_MODEL` / `PRO_MODEL` 비밀값을 설정하세요.
+- PRO만 다른 코드로 막고 싶으면 `PRO_CODE` 비밀값을 설정하세요 (없으면 교실 코드와 같음). PRO 게임은 1개에 대략 300~600원 정도 들어요.
 
 ## 4. 확인
 `https://dream0grow.github.io/games/game-maker/` 접속 → 예시 아이디어 하나 눌러서 끝까지 만들어 보세요.
