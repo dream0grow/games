@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>우리반 게임</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="wrap" style="max-width:1000px">
+  <div class="topbar">
+    <a class="brand" href="./">🤖 AI와 게임 만들기</a>
+    <nav class="nav">
+      <a href="./">✏️ 만들기</a>
+      <a class="on" href="gallery.html">🎮 우리반 게임</a>
+      <a href="../">🌱 곶자왈 게임</a>
+    </nav>
+  </div>
+
+  <div class="card">
+    <h2>🎮 우리반 친구들이 만든 게임</h2>
+    <p class="hint">눌러서 친구 게임을 해 봐요!</p>
+  </div>
+
+  <div id="loading" class="hint" style="text-align:center;padding:30px">불러오는 중… ⏳</div>
+  <div id="err" class="err hidden"></div>
+  <div id="empty" class="card hidden" style="text-align:center">
+    <p style="font-size:48px">🌱</p>
+    <p>아직 올라온 게임이 없어요. <a href="./">첫 번째 게임을 만들어 볼까?</a></p>
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <footer>© 무릉초 2학년 · 행복한 골든반</footer>
+</div>
+
+<script src="../supabase-config.js"></script>
+<script src="api.js"></script>
+<script>
+(async function () {
+  var GM = window.GameMaker;
+  var COLORS = ["#ffd8a8", "#c3fae8", "#d0ebff", "#ffdeeb", "#e5dbff", "#d3f9d8", "#fff3bf"];
+  var EMOJIS = ["🎮", "🦋", "🌳", "🐸", "⭐", "🍎", "🚀", "🐞", "🌈", "🐢", "🌸", "🦊"];
+
+  // 제목 글자로 색과 이모지를 고정해서 정함
+  function pick(arr, s) {
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return arr[h % arr.length];
+  }
+  // 제목 안에 이모지가 있으면 그걸 씀
+  function firstEmoji(s) {
+    var m = s.match(/\p{Extended_Pictographic}/u);
+    return m ? m[0] : null;
+  }
+
+  try {
+    var games = await GM.listGames();
+    document.getElementById("loading").classList.add("hidden");
+    if (!games.length) { document.getElementById("empty").classList.remove("hidden"); return; }
+    var grid = document.getElementById("grid");
+    games.forEach(function (g) {
+      var a = document.createElement("a");
+      a.className = "gcard"; a.href = "play.html?id=" + encodeURIComponent(g.id);
+      var thumb = document.createElement("div");
+      thumb.className = "thumb";
+      thumb.style.background = pick(COLORS, g.title + g.id);
+      thumb.textContent = firstEmoji(g.title) || pick(EMOJIS, g.title);
+      var body = document.createElement("div"); body.className = "body";
+      var h = document.createElement("h3"); h.textContent = g.title;
+      var by = document.createElement("div"); by.className = "by"; by.textContent = "만든 친구: " + g.author;
+      var p = document.createElement("p"); p.textContent = g.concept || "";
+      body.appendChild(h); body.appendChild(by); body.appendChild(p);
+      a.appendChild(thumb); a.appendChild(body);
+      grid.appendChild(a);
+    });
+  } catch (e) {
+    document.getElementById("loading").classList.add("hidden");
+    var el = document.getElementById("err"); el.textContent = GM.friendlyError(e); el.classList.remove("hidden");
+  }
+})();
+</script>
+</body>
+</html>
