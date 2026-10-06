@@ -28,7 +28,7 @@
 ## 배포 (GitHub Pages)
 `.github/workflows/deploy-game.yml` 가 `games/` 폴더를 Pages로 자동 배포한다.
 - main에 `games/` 변경이 push되면 자동 배포 (수동: Actions → *Deploy game to GitHub Pages* → Run)
-- 배포 주소: **https://dream0grow.github.io/dream-grow-content-automation/gotjawal-butterfly/**
+- 배포 주소: **https://dream0grow.github.io/games/gotjawal-butterfly/**
 
 ## 문제 추가·수정
 `index.html` 의 `QUIZ` 배열에서 `{ q:"질문", a:"정답", w:["오답1","오답2"] }` 형식으로 더하거나 고치면 된다.

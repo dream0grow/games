@@ -22,7 +22,7 @@
 
 - **최초 1회 설정**: 저장소 **Settings → Pages → Source = "GitHub Actions"** 로 지정
 - main에 `games/` 변경이 push되면 자동 배포 (수동: Actions → *Deploy game to GitHub Pages* → Run)
-- 배포 주소: **https://dream0grow.github.io/dream-grow-content-automation/gotjawal-quiz/**
+- 배포 주소: **https://dream0grow.github.io/games/gotjawal-speed/**
 
 ## 문제 추가·수정
 
