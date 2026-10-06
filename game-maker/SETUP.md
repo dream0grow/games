@@ -16,8 +16,8 @@ AI 호출은 선생님의 Anthropic API 키로 합니다. 키는 Supabase 서버
 2. **Billing** 에서 크레딧 충전 (예: $10). **Limits** 에서 월 사용 한도를 정해 두면 안심이 돼요.
 3. **API Keys → Create Key** → `sk-ant-...` 로 시작하는 키를 복사 (한 번만 보여 줘요)
 
-비용 감: 게임 1개 만들기(질문 + 생성)는 대략 100~300원, 고치기 1번도 비슷합니다.
-한 반 25명이 한 번씩 만들고 두세 번 고치면 대략 2만~3만 원 정도로 예상하세요.
+비용 감: 게임 1개 만들기(질문 + 생성)는 대략 50~150원, 고치기 1번도 비슷합니다.
+한 반 25명이 한 번씩 만들고 두세 번 고치면 대략 1만~1만5천 원 정도로 예상하세요.
 
 ## 2. 게임 저장 테이블 만들기
 Supabase 대시보드 → **SQL Editor** → `supabase/ai_games.sql` 내용을 붙여넣고 **Run**.
@@ -35,7 +35,7 @@ npx supabase functions deploy game-maker --project-ref lanootakxybeshnsrnyu
 - `CLASS_CODE` 는 **교실 코드**예요. 아이들이 처음 AI를 쓸 때 한 번 입력합니다(그 기기에 기억됨).
   링크가 밖으로 퍼져도 모르는 사람이 선생님 API 키를 쓰지 못하게 막아 줍니다. 꼭 설정하세요.
   바꾸고 싶으면 같은 명령으로 다시 설정하면 바로 적용돼요.
-- (선택) 모델 바꾸기: `GAME_MODEL=claude-sonnet-5-5` 처럼 설정하면 더 싸고 빠르게 만들어요. 기본은 `claude-opus-5-5`.
+- (선택) 모델 바꾸기: 기본은 `claude-sonnet-5-5`(빠르고 저렴). 더 정교하게 만들고 싶으면 `GAME_MODEL=claude-opus-5-5` 로 설정하세요.
 
 ## 4. 확인
 `https://dream0grow.github.io/games/game-maker/` 접속 → 예시 아이디어 하나 눌러서 끝까지 만들어 보세요.

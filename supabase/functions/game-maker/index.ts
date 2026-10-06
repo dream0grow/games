@@ -7,7 +7,7 @@
 // 필요한 비밀값 (supabase secrets set ...):
 //   ANTHROPIC_API_KEY  : 선생님의 Anthropic API 키 (필수)
 //   CLASS_CODE         : 교실 코드. 설정하면 이 코드를 아는 사람만 사용 가능 (권장)
-//   GAME_MODEL         : 사용할 모델 (선택, 기본 claude-opus-5-5)
+//   GAME_MODEL         : 사용할 모델 (선택, 기본 claude-sonnet-5-5)
 // SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 는 Supabase가 자동으로 넣어 줍니다.
 //
 // 요청 (POST JSON, 모두 classCode 포함):
@@ -21,7 +21,7 @@
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const MODEL = Deno.env.get("GAME_MODEL") || "claude-opus-5-5";
+const MODEL = Deno.env.get("GAME_MODEL") || "claude-sonnet-5-5";
 const CLASS_CODE = (Deno.env.get("CLASS_CODE") || "").trim();
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
