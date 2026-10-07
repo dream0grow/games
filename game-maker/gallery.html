@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>우리반 게임</title>
-<link rel="stylesheet" href="style.css?v=202610071107" />
+<link rel="stylesheet" href="style.css?v=202610071148" />
 </head>
 <body>
 <div class="wrap" style="max-width:1000px">
@@ -35,7 +35,7 @@
 </div>
 
 <script src="../supabase-config.js"></script>
-<script src="api.js?v=202610071107"></script>
+<script src="api.js?v=202610071148"></script>
 <script>
 (async function () {
   var GM = window.GameMaker;
@@ -54,12 +54,15 @@
     return m ? m[0] : null;
   }
 
+  function alertBox(msg) { var el = document.getElementById("err"); el.textContent = msg; el.classList.remove("hidden"); }
+
   try {
     var games = await GM.listGames();
     document.getElementById("loading").classList.add("hidden");
     if (!games.length) { document.getElementById("empty").classList.remove("hidden"); return; }
     var grid = document.getElementById("grid");
     games.forEach(function (g) {
+      var card = document.createElement("div"); card.className = "gwrap";
       var a = document.createElement("a");
       a.className = "gcard"; a.href = "play.html?id=" + encodeURIComponent(g.id);
       var thumb = document.createElement("div");
@@ -70,9 +73,23 @@
       var h = document.createElement("h3"); h.textContent = g.title;
       var by = document.createElement("div"); by.className = "by"; by.textContent = "만든 친구: " + g.author;
       var p = document.createElement("p"); p.textContent = g.concept || "";
-      body.appendChild(h); body.appendChild(by); body.appendChild(p);
+      var dt = document.createElement("div"); dt.className = "date";
+      dt.textContent = new Date(g.created_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
+      body.appendChild(h); body.appendChild(by); body.appendChild(p); body.appendChild(dt);
       a.appendChild(thumb); a.appendChild(body);
-      grid.appendChild(a);
+      // 선생님·친구가 교실 코드로 고치거나 숨길 수 있어요
+      var act = document.createElement("div"); act.className = "gact";
+      var ed = document.createElement("a"); ed.className = "btn small"; ed.textContent = "✏️ 수정하기";
+      ed.href = "./?edit=" + encodeURIComponent(g.id);
+      var hd = document.createElement("button"); hd.className = "btn small"; hd.textContent = "🙈 숨기기";
+      hd.onclick = async function () {
+        try {
+          if (await GM.hideGame(g.id)) card.remove();
+        } catch (e) { alertBox(GM.friendlyError(e)); }
+      };
+      act.appendChild(ed); act.appendChild(hd);
+      card.appendChild(a); card.appendChild(act);
+      grid.appendChild(card);
     });
   } catch (e) {
     document.getElementById("loading").classList.add("hidden");

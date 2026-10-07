@@ -224,3 +224,21 @@ body.pro footer { color: #9775fa; }
   .steps .s { font-size: 13px; }
   .btn.big { width: 100%; }
 }
+
+/* 참고 게임 */
+.refrow { margin-top: 12px; padding: 10px 12px; border: 2px dashed var(--line); border-radius: 14px; }
+.refchosen { margin-top: 8px; font-weight: 700; color: var(--green); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.modal.wide { max-width: 560px; }
+.reflist { max-height: 55vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 12px; text-align: left; }
+.refitem {
+  background: #fff; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  font-size: 16px; font-weight: 700; text-align: left;
+}
+.refitem:hover { background: #fff8e8; }
+
+/* 갤러리 카드 버튼 */
+.gwrap { display: flex; flex-direction: column; gap: 6px; }
+.gwrap .gcard { flex: 1; }
+.gact { display: flex; gap: 6px; justify-content: center; }
+.gact .btn.small { font-size: 14px; padding: 6px 10px; }
+.gcard .date { color: var(--ink-faint); font-size: 12px; margin-top: 6px; }

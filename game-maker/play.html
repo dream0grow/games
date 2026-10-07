@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>친구 게임 하기</title>
-<link rel="stylesheet" href="style.css?v=202610071107" />
+<link rel="stylesheet" href="style.css?v=202610071148" />
 </head>
 <body>
 <div class="wrap" style="max-width:1000px">
@@ -31,9 +31,11 @@
       <a class="btn" href="gallery.html">🎮 다른 게임 보기</a>
     </div>
     <div class="btns" id="btns2" style="display:none;margin-top:8px">
-      <a class="btn purple" id="remix">✏️ 이 게임 고쳐서 내 게임 만들기</a>
+      <a class="btn green" id="edit">✏️ 이 게임 수정하기 (교실 코드)</a>
+      <a class="btn purple" id="remix">📋 복사해서 내 게임 만들기</a>
       <a class="btn" id="remixPro">🚀 PRO로 고치기</a>
       <button class="btn" id="dl">💾 내 컴퓨터에 저장</button>
+      <button class="btn" id="hide">🙈 갤러리에서 숨기기</button>
     </div>
   </div>
 
@@ -49,7 +51,7 @@
 </div>
 
 <script src="../supabase-config.js"></script>
-<script src="api.js?v=202610071107"></script>
+<script src="api.js?v=202610071148"></script>
 <script>
 (async function () {
   var GM = window.GameMaker;
@@ -67,7 +69,13 @@
     $("stage").classList.remove("hidden");
     $("btns").style.display = "";
     $("btns2").style.display = "";
+    $("edit").href = "./?edit=" + encodeURIComponent(g.id);
     $("remix").href = "./?remix=" + encodeURIComponent(g.id);
+    $("hide").onclick = async function () {
+      try {
+        if (await GM.hideGame(g.id)) location.href = "gallery.html";
+      } catch (e) { $("err").textContent = GM.friendlyError(e); $("err").classList.remove("hidden"); }
+    };
     $("remixPro").href = "pro/?remix=" + encodeURIComponent(g.id);
     $("dl").onclick = function () {
       var a = document.createElement("a");

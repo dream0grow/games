@@ -103,12 +103,22 @@
         '<div class="inrow" style="margin-top:10px">' +
           '<textarea id="fixText" maxlength="600" style="min-height:80px" placeholder="여기에 적거나 🎤로 말해요"></textarea>' +
           '<button class="mic" data-for="fixText" aria-label="말로 적기">🎤</button></div>' +
+        '<div class="refrow">' +
+          '<span class="hint">🖼️ 다른 게임 참고하기 <span class="sub">(그래픽이 더 좋은 게임을 고르면 그 모습을 가져와요)</span></span>' +
+          '<div class="btns" style="margin-top:6px">' +
+            '<button class="btn small" id="refGallery">🎮 우리반 게임에서 고르기</button>' +
+            '<button class="btn small" id="refFileBtn">📂 파일에서 고르기</button>' +
+            '<input type="file" id="refFile" accept=".html,.htm,text/html" hidden />' +
+          "</div>" +
+          '<div id="refChosen" class="refchosen hidden"></div>' +
+        "</div>" +
         '<div class="btns"><button class="btn purple" id="fix">🪄 AI에게 고쳐 달라고 하기</button></div>' +
       "</div>" +
       '<div class="card">' +
         '<h2>💾 다 만들었어?</h2>' +
         '<div class="btns">' +
           '<button class="btn green big" id="save">🌟 우리반 게임에 올리기</button>' +
+          '<button class="btn hidden" id="saveNew">➕ 새 게임으로 올리기</button>' +
           '<button class="btn" id="download">💾 내 컴퓨터에 저장</button>' +
           '<button class="btn" id="newGame">🆕 새 게임 만들기</button></div>' +
         '<div id="saveMsg" class="hidden"></div>' +
@@ -123,6 +133,12 @@
       '<input type="text" id="codeInput" style="margin-top:14px;text-align:center" autocomplete="off" />' +
       '<div id="codeErr" class="err hidden"></div>' +
       '<div class="btns center"><button class="btn primary" id="codeOk">확인</button></div>' +
+    "</div></div>" +
+    '<div class="modal-bg hidden" id="refModal"><div class="modal wide">' +
+      "<h2>🎮 참고할 게임 고르기</h2>" +
+      '<p class="hint">그래픽을 참고하고 싶은 게임을 눌러 주세요.</p>' +
+      '<div id="refList" class="reflist">불러오는 중… ⏳</div>' +
+      '<div class="btns center"><button class="btn" id="refClose">닫기</button></div>' +
     "</div></div>";
 
   function field(id, label, sub, input, mic) {
@@ -141,7 +157,9 @@
       questions: [],     // [{question, choices}]
       answers: [],       // ["...", ...]
       raw: "",           // 지금 게임 (그림은 "__IMG1__" 자리표시)
-      history: []        // 고치기 전 버전들
+      history: [],       // 고치기 전 버전들
+      galleryId: 0,      // 우리반 게임에 올린 번호 (있으면 '업데이트'로 같은 게임을 덮어씀)
+      reference: null    // 참고할 게임 {title, raw}
     };
   }
   var state = emptyState();
@@ -595,7 +613,13 @@
     $("undo").classList.toggle("hidden", state.history.length === 0);
     $("saveMsg").className = "hidden";
     $("save").disabled = false;
+    updateSaveButtons();
+    renderReference();
     go(4);
+  }
+  function updateSaveButtons() {
+    $("save").textContent = state.galleryId ? "🌟 우리반 게임 업데이트하기" : "🌟 우리반 게임에 올리기";
+    $("saveNew").classList.toggle("hidden", !state.galleryId);
   }
   $("replay").onclick = function () { $("frame").srcdoc = playable(); };
   $("fullscreen").onclick = function () {
@@ -611,8 +635,67 @@
   // 아이디어나 그림을 바꾼 뒤 다시 만들 수 있게 ①로
   $("editIdea").onclick = function () { writeIdea(state.idea); renderImages(); go(1); };
 
+  // ---------------- 참고할 게임 ----------------
+  function setReference(title, html) {
+    // 참고 게임 속 그림도 쓸 수 있게 지금 그림 목록 뒤에 붙임
+    var p = GM.unpackProject(html);
+    if (!p.rawHtml) { flash(GM.friendlyError({ code: "bad_file" })); return; }
+    var ex = GM.extractImages(GM.fillImages(p.rawHtml, p.images), state.images.map(function (im) { return { dataUrl: im.dataUrl, note: im.note }; }));
+    ex.images.slice(state.images.length).forEach(function (im) {
+      state.images.push({ dataUrl: im.dataUrl, orig: im.dataUrl, note: "참고 게임 그림", removeBg: false });
+    });
+    state.reference = { title: title || p.idea.title || "참고 게임", raw: ex.html };
+    renderReference();
+    if (!$("fixText").value.trim()) $("fixText").value = "참고한 게임처럼 그래픽을 예쁘게 바꿔 줘";
+  }
+  function renderReference() {
+    var el = $("refChosen");
+    if (!state.reference) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+    el.classList.remove("hidden"); el.innerHTML = "";
+    el.appendChild(document.createTextNode("✅ 참고: " + state.reference.title + " "));
+    var x = document.createElement("button"); x.className = "btn small"; x.textContent = "✕ 빼기";
+    x.onclick = function () { state.reference = null; renderReference(); };
+    el.appendChild(x);
+  }
+  $("refFileBtn").onclick = function () { $("refFile").click(); };
+  $("refFile").onchange = function () {
+    var f = this.files && this.files[0];
+    this.value = "";
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () { setReference(f.name.replace(/\.html?$/i, ""), String(r.result || "")); };
+    r.readAsText(f);
+  };
+  $("refClose").onclick = function () { $("refModal").classList.add("hidden"); };
+  $("refGallery").onclick = async function () {
+    $("refModal").classList.remove("hidden");
+    var list = $("refList");
+    list.textContent = "불러오는 중… ⏳";
+    try {
+      var games = await GM.listGames();
+      list.innerHTML = "";
+      if (!games.length) { list.textContent = "아직 올라온 게임이 없어요."; return; }
+      games.forEach(function (g) {
+        if (state.galleryId && g.id === state.galleryId) return; // 지금 고치는 게임은 빼기
+        var b = document.createElement("button");
+        b.className = "refitem";
+        b.textContent = g.title + " · " + g.author + " · " + new Date(g.created_at).toLocaleDateString("ko-KR");
+        b.onclick = async function () {
+          list.textContent = "불러오는 중… ⏳";
+          try {
+            var full = await GM.getGame(g.id);
+            setReference(full.title, full.html);
+            $("refModal").classList.add("hidden");
+          } catch (e) { list.textContent = GM.friendlyError(e); }
+        };
+        list.appendChild(b);
+      });
+    } catch (e) { list.textContent = GM.friendlyError(e); }
+  };
+
   $("fix").onclick = async function () {
     var request = $("fixText").value.trim();
+    if (!request && state.reference) request = "참고한 게임처럼 그래픽을 예쁘게 바꿔 줘";
     if (!request) { $("fixText").focus(); return; }
     var before = state.raw;
     go(3);
@@ -622,11 +705,21 @@
     setProgress(0);
     try {
       var payload = { idea: apiIdea(), html: before, request: request };
-      // 1) 바뀔 부분만 받아서 적용 (빠르고 저렴)
-      var patch = await withCode(function () {
-        return GM.postStream("revise", payload, function (t) { setProgress(trimmedLen(t)); });
-      });
-      var html = GM.applyPatch(before, patch);
+      var html = null;
+      if (state.reference) {
+        // 참고 게임이 있으면 그래픽을 크게 바꾸므로 전체를 다시 받기
+        payload.reference = state.reference.raw;
+        payload.referenceTitle = state.reference.title;
+        $("makeHint").textContent = "참고한 게임의 그래픽을 가져오는 중이에요. " + makingHint("make");
+        expected = Math.max(EXPECTED, before.length);
+        html = await withCode(function () { return streamGame("revise_full", payload); });
+      } else {
+        // 1) 바뀔 부분만 받아서 적용 (빠르고 저렴)
+        var patch = await withCode(function () {
+          return GM.postStream("revise", payload, function (t) { setProgress(trimmedLen(t)); });
+        });
+        html = GM.applyPatch(before, patch);
+      }
       // 2) 잘 안 맞으면 전체를 다시 받기
       if (!html) {
         $("makeHint").textContent = "조금 더 꼼꼼하게 고치는 중이에요…";
@@ -636,6 +729,7 @@
       }
       state.history.push(before);
       $("fixText").value = "";
+      state.reference = null;
       showGame(html);
     } catch (e) {
       showErr("err3", GM.friendlyError(e));
@@ -651,7 +745,8 @@
       mode: MODE, idea: idea,
       images: state.images.map(function (im) { return { dataUrl: im.dataUrl, note: im.note, removeBg: im.removeBg }; }),
       summary: state.summary, questions: state.questions, answers: state.answers,
-      rawHtml: state.raw
+      rawHtml: state.raw,
+      galleryId: state.galleryId || 0
     };
   }
   function fileName(p) {
@@ -679,6 +774,7 @@
     state.summary = p.summary || "";
     state.questions = p.questions || [];
     state.answers = p.answers || [];
+    state.galleryId = Number(p.galleryId) || 0;
     writeIdea(state.idea); renderImages(); saveDraft();
     if (p.rawHtml) { showGame(p.rawHtml); return; }
     if (state.questions.length) { go(2); renderQuestions(); return; }
@@ -700,23 +796,29 @@
     r.readAsText(f);
   };
 
-  $("save").onclick = async function () {
-    $("save").disabled = true;
+  async function saveToGallery(asNew) {
+    $("save").disabled = true; $("saveNew").disabled = true;
     try {
-      var p = project();
-      var r = await withCode(function () { return GM.postJson("save", { idea: state.idea, html: GM.packProject(p) }); });
+      var id = asNew ? 0 : state.galleryId;
+      var p = project(); p.galleryId = id;
+      var r = await withCode(function () { return GM.postJson("save", { idea: state.idea, html: GM.packProject(p), id: id }); });
+      state.galleryId = r.id;   // 다음부터는 같은 게임을 업데이트
+      updateSaveButtons();
       var el = $("saveMsg");
       el.className = "ok";
       el.innerHTML = "";
-      el.appendChild(document.createTextNode("🎉 우리반 게임에 올렸어요! "));
+      el.appendChild(document.createTextNode(r.updated ? "🎉 우리반 게임을 업데이트했어요! (예전 버전은 선생님이 되살릴 수 있게 보관돼요) " : "🎉 우리반 게임에 올렸어요! "));
       var a = document.createElement("a");
       a.href = ROOT + "play.html?id=" + encodeURIComponent(r.id); a.textContent = "친구들이 볼 수 있는 링크 열기";
       el.appendChild(a);
     } catch (e) {
       $("saveMsg").className = "err"; $("saveMsg").textContent = GM.friendlyError(e);
-      $("save").disabled = false;
+    } finally {
+      $("save").disabled = false; $("saveNew").disabled = false;
     }
-  };
+  }
+  $("save").onclick = function () { saveToGallery(false); };
+  $("saveNew").onclick = function () { saveToGallery(true); };
 
   $("newGame").onclick = function () {
     state = emptyState();
@@ -725,16 +827,23 @@
     go(1);
   };
 
-  // ---------------- 갤러리 게임 고치기 (?remix=번호) ----------------
-  var remix = new URLSearchParams(location.search).get("remix");
-  if (remix) {
-    flash("친구 게임을 불러오는 중… ⏳");
-    GM.getGame(remix).then(function (g) {
+  // ---------------- 갤러리 게임 불러오기 ----------------
+  // ?edit=번호  : 그 게임을 수정해서 같은 자리에 업데이트 (교실 코드 필요)
+  // ?remix=번호 : 그 게임을 복사해서 내 새 게임으로
+  var qs = new URLSearchParams(location.search);
+  var editId = qs.get("edit"), remixId = qs.get("remix");
+  if (editId || remixId) {
+    flash("게임을 불러오는 중… ⏳");
+    GM.getGame(editId || remixId).then(function (g) {
       if (!g) { flash("게임을 찾을 수 없어요."); return; }
       var p = GM.unpackProject(g.html);
       p.idea = Object.assign({ title: g.title, author: g.author, concept: g.concept, rules: g.rules }, p.idea || {});
+      p.galleryId = editId ? g.id : 0;
       restore(p);
-      flash("📂 '" + g.title + "' 을(를) 불러왔어요. 고쳐서 내 게임으로 올려 봐요!");
+      flash(editId
+        ? "✏️ '" + g.title + "' 을(를) 수정하고 있어요. 다 고치면 '업데이트하기'를 눌러요."
+        : "📂 '" + g.title + "' 을(를) 불러왔어요. 고쳐서 내 게임으로 올려 봐요!");
+      if (editId && !GM.getCode()) askCode();
     }).catch(function (e) { flash(GM.friendlyError(e)); });
   }
 
