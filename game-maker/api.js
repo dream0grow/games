@@ -121,10 +121,10 @@
   // ---------- 그림 자리표시 ----------
   // 그림 [{dataUrl, note}] → "__IMG1__" 을 실제 그림 주소로
   function fillImages(html, images) {
-    (images || []).forEach(function (im, i) {
-      html = html.split("__IMG" + (i + 1) + "__").join(im.dataUrl);
+    return html.replace(/__IMG(\d+)__/g, function (all, n) {
+      var im = (images || [])[n - 1];
+      return im ? im.dataUrl : all;
     });
-    return html;
   }
   // HTML 속 data:image 주소를 꺼내 자리표시로 바꿈 (불러온 게임을 AI에게 다시 보낼 때)
   function extractImages(html, images) {
@@ -133,7 +133,7 @@
     html = html.replace(/data:image\/[a-z+.-]+;base64,[A-Za-z0-9+/=]{2000,}/g, function (url) {
       var n = images.findIndex(function (im) { return im.dataUrl === url; });
       if (n === -1) {
-        if (images.length >= 3) return url; // 3장 넘으면 그대로 둠
+        if (images.length >= 20) return url; // 20장 넘으면 그대로 둠
         images.push({ dataUrl: url, note: "게임 속 그림" });
         n = images.length - 1;
       }

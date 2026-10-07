@@ -44,7 +44,7 @@
       field("title", "🏷️ 게임 이름", "", '<input type="text" id="title" maxlength="40" placeholder="예: 곶자왈 나비 구하기" autocomplete="off" />', true) +
       field("concept", "🌈 어떤 게임이야?", "(주인공, 장소, 이야기)", '<textarea id="concept" maxlength="1200" placeholder="예: 곶자왈 숲에서 나비가 길을 잃었어요. 내가 나비가 되어 꽃을 찾아 날아가요."></textarea>', true) +
       field("rules", "📏 게임 규칙", "(어떻게 하면 이기고, 어떻게 하면 져?)", '<textarea id="rules" maxlength="1200" placeholder="예: 꽃에 닿으면 1점! 새한테 닿으면 하트가 줄어요. 꽃 10개를 모으면 이겨요."></textarea>', true) +
-      '<div class="field"><label>🖼️ 그림 넣기 <span class="sub">(최대 3장 · 종이에 그린 그림을 찍어도 돼요)</span></label>' +
+      '<div class="field"><label>🖼️ 그림 넣기 <span class="sub">(여러 장 넣을 수 있어요 · 종이 그림을 찍거나, 끌어다 놓거나, Ctrl+V로 붙여넣어도 돼요)</span></label>' +
         '<div class="imgs" id="imgs"></div>' +
         '<button class="btn small" id="addImg">📷 그림 추가</button>' +
         '<input type="file" id="imgFile" accept="image/*" multiple hidden />' +
@@ -214,21 +214,60 @@
 
   // ---------------- 그림 넣기 ----------------
   var MAX_SIDE = 512;
+  var MAX_IMAGES = 20;  // 서버도 20장까지 받아요
   $("addImg").onclick = function () {
-    if (state.images.length >= 3) return showErr("err1", "그림은 3장까지 넣을 수 있어요.");
+    if (state.images.length >= MAX_IMAGES) return showErr("err1", "그림은 " + MAX_IMAGES + "장까지 넣을 수 있어요.");
     $("imgFile").click();
   };
-  $("imgFile").onchange = async function () {
+  $("imgFile").onchange = function () {
     var files = Array.prototype.slice.call(this.files || []);
     this.value = "";
-    for (var i = 0; i < files.length && state.images.length < 3; i++) {
+    addFiles(files);
+  };
+
+  // 파일 선택·끌어다 놓기·붙여넣기 모두 여기로
+  async function addFiles(files) {
+    files = files.filter(function (f) { return f && (/^image\//.test(f.type) || /\.(heic|heif)$/i.test(f.name || "")); });
+    if (!files.length) return;
+    showErr("err1", "");
+    var failed = [];
+    for (var i = 0; i < files.length; i++) {
+      if (state.images.length >= MAX_IMAGES) { showErr("err1", "그림은 " + MAX_IMAGES + "장까지 넣을 수 있어요."); break; }
       try {
         var orig = await resizeImage(files[i]);
         state.images.push({ orig: orig, dataUrl: orig, note: "", removeBg: false });
-      } catch (e) { showErr("err1", "이 그림은 열 수 없어요. 다른 그림을 골라 주세요."); }
+      } catch (e) { failed.push(files[i]); }
     }
     renderImages(); saveDraft();
-  };
+    if (failed.length) {
+      var heic = failed.some(function (f) { return /heic|heif/i.test(f.type + " " + f.name); });
+      showErr("err1", heic
+        ? "아이폰·아이패드 사진(HEIC)은 이 브라우저에서 열 수 없어요. 사진을 화면 캡처해서 넣거나, 카메라 설정에서 '높은 호환성'으로 바꿔 찍어 주세요."
+        : "열 수 없는 그림이 " + failed.length + "장 있었어요. 다른 그림을 골라 주세요.");
+    }
+  }
+
+  // 끌어다 놓기 (① 단계 카드 어디든)
+  var dropZone = $("step1");
+  ["dragenter", "dragover"].forEach(function (t) {
+    dropZone.addEventListener(t, function (e) {
+      if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") !== -1) { e.preventDefault(); dropZone.classList.add("dropping"); }
+    });
+  });
+  ["dragleave", "drop"].forEach(function (t) {
+    dropZone.addEventListener(t, function () { dropZone.classList.remove("dropping"); });
+  });
+  dropZone.addEventListener("drop", function (e) {
+    if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    addFiles(Array.prototype.slice.call(e.dataTransfer.files));
+  });
+  // 붙여넣기 (Ctrl+V) — ① 단계에서만
+  document.addEventListener("paste", function (e) {
+    if (current !== 1 || !e.clipboardData) return;
+    var files = Array.prototype.slice.call(e.clipboardData.files || []);
+    if (files.length) { e.preventDefault(); addFiles(files); }
+  });
 
   function loadImg(src) {
     return new Promise(function (resolve, reject) {
@@ -307,6 +346,8 @@
       var th = document.createElement("div"); th.className = "imgthumb";
       var img = document.createElement("img"); img.src = im.dataUrl; img.alt = "그림 " + (i + 1);
       th.appendChild(img);
+      var num = document.createElement("span"); num.className = "imgnum"; num.textContent = i + 1;
+      th.appendChild(num);
       var x = document.createElement("button"); x.className = "imgx"; x.textContent = "✕"; x.setAttribute("aria-label", "그림 빼기");
       x.onclick = function () { state.images.splice(i, 1); renderImages(); saveDraft(); };
       th.appendChild(x);
@@ -324,7 +365,7 @@
       card.appendChild(th); card.appendChild(note); card.appendChild(lab);
       box.appendChild(card);
     });
-    $("addImg").classList.toggle("hidden", state.images.length >= 3);
+    $("addImg").classList.toggle("hidden", state.images.length >= MAX_IMAGES);
   }
   renderImages();
 

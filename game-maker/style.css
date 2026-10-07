@@ -181,6 +181,12 @@ footer { text-align: center; margin-top: 30px; color: #b08a55; font-size: 13px; 
   background: repeating-conic-gradient(#f1e6d2 0% 25%, #fff 0% 50%) 50% / 16px 16px;
 }
 .imgthumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.imgnum {
+  position: absolute; top: 6px; left: 6px; min-width: 26px; height: 26px; border-radius: 13px; padding: 0 6px;
+  background: var(--accent-2); color: #fff; font-size: 14px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+#step1.dropping .card { outline: 4px dashed var(--accent-2); outline-offset: 4px; }
 .imgx {
   position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%;
   background: rgba(58, 36, 16, .7); color: #fff; font-size: 15px; font-weight: 800;
