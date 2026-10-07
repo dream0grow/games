@@ -20,7 +20,9 @@
 //   {action:"revise", idea, html, request}     → 고칠 부분(FIND/REPLACE 블록) 텍스트 스트림
 //   {action:"revise_full", idea, html, request}→ 고친 전체 HTML 텍스트 스트림
 //   {action:"continue", idea, partial}         → HTML 텍스트 스트림 (끊긴 뒤 이어지는 부분)
-//   {action:"save", idea, html}                → JSON {id}
+//   {action:"save", idea, html, id?}           → JSON {id, updated} (id가 있으면 그 게임을 덮어쓰고 이전 버전은 숨긴 백업으로 보관)
+//   {action:"hide", id}                        → JSON {ok} (갤러리에서 숨기기)
+//   revise/revise_full 에 reference(참고할 게임 코드)를 주면 그 게임의 그래픽·연출을 참고해서 고침
 //   {action:"image", prompt}                   → JSON {data, media_type} (Gemini 그림 만들기)
 //   {action:"check"}                           → JSON {ok:true, gemini} (교실 코드 확인용)
 //
@@ -400,9 +402,16 @@ Deno.serve(async (req) => {
       case "revise_full": {
         const html = clip(body.html, 250000);
         const request = clip(body.request, 800);
+        const reference = clip(body.reference, 150000);
+        const refTitle = clip(body.referenceTitle, 60);
         const head =
           `아이가 만든 게임을 고쳐 주세요. 원래 기획:\n${ideaText(idea, [], images)}\n\n` +
           `아이의 고쳐 달라는 말:\n"${request}"\n\n지금 게임 코드:\n${html}\n\n` +
+          (reference
+            ? `참고할 게임${refTitle ? ` "${refTitle}"` : ""} 코드 (아이가 이 게임의 그래픽·연출이 더 좋다고 했어요):\n${reference}\n\n` +
+              `지금 게임의 내용·규칙·진행은 그대로 두고, 참고 게임의 그래픽(캐릭터·배경 그리기 방식, 색감, 애니메이션, 효과, 화면 구성)을 가져와 지금 게임에 맞게 적용하세요. ` +
+              `참고 게임에만 있는 그림 자리표시("__IMG숫자__")도 그대로 쓸 수 있어요. `
+            : "") +
           `요청한 부분만 바꾸고 나머지는 그대로 두세요.`;
         if (action === "revise") {
           return streamText(mode, system, userContent(images, head + "\n" + PATCH_RULES), 24000);
@@ -425,19 +434,36 @@ Deno.serve(async (req) => {
         const html = String(body.html || "");
         if (!/<html/i.test(html) || html.length > 4_000_000) return json({ error: "bad_html" }, 400);
         const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-        const { data, error } = await supabase
-          .from("ai_games")
-          .insert({
-            title: clip(idea.title, 60) || "이름 없는 게임",
-            author: clip(idea.author, 30) || "익명",
-            concept: clip(idea.concept, 1500),
-            rules: clip(idea.rules, 1500),
-            html,
-          })
-          .select("id")
-          .single();
+        const row = {
+          title: clip(idea.title, 60) || "이름 없는 게임",
+          author: clip(idea.author, 30) || "익명",
+          concept: clip(idea.concept, 1500),
+          rules: clip(idea.rules, 1500),
+          html,
+        };
+        const id = Number(body.id) || 0;
+        if (id) {
+          // 업그레이드: 같은 게임을 덮어쓰고, 이전 버전은 숨긴 백업으로 남김 (선생님이 대시보드에서 되살릴 수 있음)
+          const { data: old } = await supabase.from("ai_games").select("title,author,concept,rules,html").eq("id", id).maybeSingle();
+          if (old) {
+            await supabase.from("ai_games").insert({ ...old, title: clip(`[백업 #${id}] ${old.title}`, 80), hidden: true });
+            const { error } = await supabase.from("ai_games").update({ ...row, hidden: false }).eq("id", id);
+            if (error) throw error;
+            return json({ id, updated: true });
+          }
+        }
+        const { data, error } = await supabase.from("ai_games").insert(row).select("id").single();
         if (error) throw error;
-        return json({ id: data.id });
+        return json({ id: data.id, updated: false });
+      }
+
+      case "hide": {
+        const id = Number(body.id) || 0;
+        if (!id) return json({ error: "bad_id" }, 400);
+        const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        const { error } = await supabase.from("ai_games").update({ hidden: true }).eq("id", id);
+        if (error) throw error;
+        return json({ ok: true });
       }
 
       default:

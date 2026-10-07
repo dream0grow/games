@@ -222,7 +222,38 @@
     return "앗, 잠깐 문제가 생겼어요. 잠시 뒤에 다시 눌러 주세요.";
   }
 
+  // 교실 코드 확인 (저장된 코드가 맞으면 바로 통과, 아니면 입력 창)
+  function requireCode() {
+    return postJson("check").then(function () { return true; }, function (e) {
+      if (e.code !== "wrong_code") throw e;
+      return new Promise(function (resolve) {
+        var bg = document.createElement("div");
+        bg.className = "modal-bg";
+        bg.innerHTML = '<div class="modal"><h2>🔑 교실 코드</h2><p class="hint">선생님이 알려준 코드를 적어 주세요.</p>' +
+          '<input type="text" style="margin-top:14px;text-align:center" autocomplete="off" />' +
+          '<div class="err hidden"></div><div class="btns center"><button class="btn">취소</button><button class="btn primary">확인</button></div></div>';
+        document.body.appendChild(bg);
+        var input = bg.querySelector("input"), err = bg.querySelector(".err"), btns = bg.querySelectorAll("button");
+        input.focus();
+        btns[0].onclick = function () { bg.remove(); resolve(false); };
+        btns[1].onclick = function () {
+          setCode(input.value.trim());
+          postJson("check").then(function () { bg.remove(); resolve(true); }, function (e2) {
+            err.textContent = friendlyError(e2); err.classList.remove("hidden");
+          });
+        };
+        input.addEventListener("keydown", function (ev) { if (ev.key === "Enter") btns[1].click(); });
+      });
+    });
+  }
+  async function hideGame(id) {
+    if (!(await requireCode())) return false;
+    await postJson("hide", { id: id });
+    return true;
+  }
+
   global.GameMaker = {
+    requireCode: requireCode, hideGame: hideGame,
     setMode: setMode,
     getCode: getCode, setCode: setCode,
     postJson: postJson, postStream: postStream,
