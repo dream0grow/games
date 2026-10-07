@@ -36,6 +36,7 @@ npx supabase functions deploy game-maker --project-ref lanootakxybeshnsrnyu
   링크가 밖으로 퍼져도 모르는 사람이 선생님 API 키를 쓰지 못하게 막아 줍니다. 꼭 설정하세요.
   바꾸고 싶으면 같은 명령으로 다시 설정하면 바로 적용돼요.
 - 기본(`game-maker/`)은 `claude-sonnet-5-5`, PRO(`game-maker/pro/`)는 `claude-opus-5-5` 를 씁니다. 바꾸려면 `GAME_MODEL` / `PRO_MODEL` 비밀값을 설정하세요.
+- **AI로 그림 만들기**(Gemini): Supabase 비밀값에 `GEMINI_API_KEY` 를 넣으면 켜져요. 모델은 `GEMINI_IMAGE_MODEL`(기본 `gemini-nano-banana-2.1`).
 - PRO만 다른 코드로 막고 싶으면 `PRO_CODE` 비밀값을 설정하세요 (없으면 교실 코드와 같음). PRO 게임은 1개에 대략 300~600원 정도 들어요.
 
 ## 4. 확인

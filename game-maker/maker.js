@@ -46,7 +46,12 @@
       field("rules", "📏 게임 규칙", "(어떻게 하면 이기고, 어떻게 하면 져?)", '<textarea id="rules" maxlength="1200" placeholder="예: 꽃에 닿으면 1점! 새한테 닿으면 하트가 줄어요. 꽃 10개를 모으면 이겨요."></textarea>', true) +
       '<div class="field"><label>🖼️ 그림 넣기 <span class="sub">(여러 장 넣을 수 있어요 · 종이 그림을 찍거나, 끌어다 놓거나, Ctrl+V로 붙여넣어도 돼요)</span></label>' +
         '<div class="imgs" id="imgs"></div>' +
-        '<button class="btn small" id="addImg">📷 그림 추가</button>' +
+        '<div class="genrow">' +
+          '<input type="text" id="genPrompt" maxlength="200" placeholder="🎨 AI에게 그려 달라고 하기 (예: 귀여운 주황색 나비)" autocomplete="off" />' +
+          '<button class="mic" data-for="genPrompt" aria-label="말로 적기">🎤</button>' +
+          '<button class="btn small blue" id="genImg">🎨 AI로 그림 만들기</button>' +
+        "</div>" +
+        '<button class="btn small" id="addImg">📷 내 그림 추가</button>' +
         '<input type="file" id="imgFile" accept="image/*" multiple hidden />' +
       "</div>" +
       '<p class="hint" style="margin-top:14px">어떻게 적을지 모르겠으면 눌러 봐요 👇</p>' +
@@ -246,6 +251,37 @@
         : "열 수 없는 그림이 " + failed.length + "장 있었어요. 다른 그림을 골라 주세요.");
     }
   }
+
+  // AI(Gemini)로 그림 만들기
+  function b64ToBlob(b64, type) {
+    var bin = atob(b64), arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: type || "image/png" });
+  }
+  async function genImage() {
+    var prompt = $("genPrompt").value.trim();
+    if (!prompt) { $("genPrompt").focus(); return; }
+    if (state.images.length >= MAX_IMAGES) return showErr("err1", "그림은 " + MAX_IMAGES + "장까지 넣을 수 있어요.");
+    showErr("err1", "");
+    var btn = $("genImg");
+    btn.disabled = true; btn.textContent = "🎨 그리는 중…";
+    try {
+      var r = await withCode(function () { return GM.postJson("image", { prompt: prompt }); });
+      var orig = await resizeImage(b64ToBlob(r.data, r.media_type));
+      var isBg = /배경|풍경|하늘|숲 전체|바다 전체/.test(prompt);
+      var im = { orig: orig, dataUrl: orig, note: prompt, removeBg: !isBg };
+      if (im.removeBg) im.dataUrl = await removeBackground(orig);
+      state.images.push(im);
+      $("genPrompt").value = "";
+      renderImages(); saveDraft();
+    } catch (e) {
+      showErr("err1", GM.friendlyError(e));
+    } finally {
+      btn.disabled = false; btn.textContent = "🎨 AI로 그림 만들기";
+    }
+  }
+  $("genImg").onclick = genImage;
+  $("genPrompt").addEventListener("keydown", function (e) { if (e.key === "Enter") genImage(); });
 
   // 끌어다 놓기 (① 단계 카드 어디든)
   var dropZone = $("step1");

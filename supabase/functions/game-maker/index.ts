@@ -10,6 +10,8 @@
 //   PRO_CODE           : PRO 전용 코드 (선택, 없으면 CLASS_CODE 와 같음)
 //   GAME_MODEL         : 기본 모델 (선택, 기본 claude-sonnet-5-5)
 //   PRO_MODEL          : PRO 모델 (선택, 기본 claude-opus-5-5)
+//   GEMINI_API_KEY     : Google Gemini API 키 (선택) — 있으면 "AI로 그림 만들기"가 켜짐
+//   GEMINI_IMAGE_MODEL : 그림 모델 (선택, 기본 gemini-nano-banana-2.1)
 // SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 는 Supabase가 자동으로 넣어 줍니다.
 //
 // 요청 (POST JSON, 모두 classCode 포함, mode: "basic" | "pro"):
@@ -19,7 +21,8 @@
 //   {action:"revise_full", idea, html, request}→ 고친 전체 HTML 텍스트 스트림
 //   {action:"continue", idea, partial}         → HTML 텍스트 스트림 (끊긴 뒤 이어지는 부분)
 //   {action:"save", idea, html}                → JSON {id}
-//   {action:"check"}                           → JSON {ok:true} (교실 코드 확인용)
+//   {action:"image", prompt}                   → JSON {data, media_type} (Gemini 그림 만들기)
+//   {action:"check"}                           → JSON {ok:true, gemini} (교실 코드 확인용)
 //
 // idea.images: [{data: base64, media_type, note}] (최대 20장). 게임 코드에서는
 // "__IMG1__" 같은 자리표시 문자열로 쓰고, 브라우저가 실제 그림으로 바꿔 넣습니다.
@@ -31,6 +34,9 @@ const BASIC_MODEL = Deno.env.get("GAME_MODEL") || "claude-sonnet-5-5";
 const PRO_MODEL = Deno.env.get("PRO_MODEL") || "claude-opus-5-5";
 const CLASS_CODE = (Deno.env.get("CLASS_CODE") || "").trim();
 const PRO_CODE = (Deno.env.get("PRO_CODE") || "").trim() || CLASS_CODE;
+
+const GEMINI_KEY = (Deno.env.get("GEMINI_API_KEY") || "").trim();
+const GEMINI_IMAGE_MODEL = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-nano-banana-2.1";
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
 
@@ -302,6 +308,33 @@ async function makeQuestions(mode: Mode, idea: Idea, images: Img[]) {
   return data;
 }
 
+// ---------- 그림 만들기 (Gemini) ----------
+async function makeImage(prompt: string) {
+  if (!GEMINI_KEY) throw Object.assign(new Error("no_gemini"), { code: "no_gemini" });
+  const text =
+    `초등학교 2학년 어린이가 만드는 게임에 들어갈 그림입니다: "${prompt}". ` +
+    "어린이 그림책 같은 귀엽고 밝은 스티커 스타일로, 대상 하나만 가운데에 크게 그려 주세요. " +
+    "배경은 아무것도 없는 순수한 흰색, 글자나 테두리 없이. 무섭거나 잔인한 요소 없이 아이에게 알맞게. " +
+    "만약 '배경'이나 '풍경'을 요청했다면 화면을 꽉 채운 가로형 게임 배경으로 그려 주세요.";
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/${GEMINI_IMAGE_MODEL}:generateContent`, {
+    method: "POST",
+    headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text }] }] }),
+  });
+  if (!res.ok) {
+    console.error("gemini", res.status, await res.text());
+    throw new Error("gemini_failed");
+  }
+  const data = await res.json();
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  for (const p of parts) {
+    const inline = p.inlineData || p.inline_data;
+    if (inline?.data) return { data: inline.data, media_type: inline.mimeType || inline.mime_type || "image/png" };
+  }
+  console.error("gemini no image", JSON.stringify(data).slice(0, 500));
+  throw Object.assign(new Error("no_image"), { code: "no_image" });
+}
+
 // ---------- 메인 ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -327,7 +360,18 @@ Deno.serve(async (req) => {
   try {
     switch (action) {
       case "check":
-        return json({ ok: true });
+        return json({ ok: true, gemini: !!GEMINI_KEY });
+
+      case "image": {
+        const prompt = clip(body.prompt, 300);
+        if (!prompt) return json({ error: "bad_prompt" }, 400);
+        try {
+          return json(await makeImage(prompt));
+        } catch (e) {
+          const code = (e as { code?: string }).code || "gemini_failed";
+          return json({ error: code }, code === "no_gemini" ? 501 : 502);
+        }
+      }
 
       case "questions":
         return json(await makeQuestions(mode, idea, images));
