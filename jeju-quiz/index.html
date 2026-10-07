@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#ff9f43" />
+<title>제주어 골든벨 퀴즈</title>
+<style>
+  /* 옛한글(아래아) 자모만 담은 글꼴: 컴퓨터 크롬에서도 ᄀᆞ·ᄒᆞ가 한 글자로 모아져 보이게 */
+  @font-face { font-family: "JejuYet"; src: url("fonts/yethangul-Regular.woff2") format("woff2");
+    font-weight: 100 599; unicode-range: U+1100-11FF, U+A960-A97F, U+D7B0-D7FF; font-display: swap; }
+  @font-face { font-family: "JejuYet"; src: url("fonts/yethangul-Bold.woff2") format("woff2");
+    font-weight: 600 900; unicode-range: U+1100-11FF, U+A960-A97F, U+D7B0-D7FF; font-display: swap; }
+  :root {
+    --bg1: #fff7e6; --bg2: #ffe3b8;
+    --ink: #3a2410; --sub: #8a6a3a;
+    --orange: #ff8a1f; --orange-d: #d9650a;
+    --green: #2f9e44; --red: #e03131; --sea: #1c7ed6;
+    --card: #fff; --line: #ffd98a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { background: #ffe3b8; }
+  body {
+    font-family: "JejuYet", "Apple SD Gothic Neo", "Noto Sans CJK KR", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    background: linear-gradient(160deg, var(--bg1), var(--bg2));
+    background-attachment: fixed;
+    color: var(--ink);
+    min-height: 100dvh;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; color: inherit; }
+  .screen { display: none; max-width: 640px; margin: 0 auto;
+    padding: calc(18px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  .screen.on { display: block; }
+
+  /* ---------- 홈 ---------- */
+  .hero { text-align: center; padding: 10px 0 6px; }
+  .hero .icon { font-size: 52px; line-height: 1; }
+  .hero h1 { font-size: clamp(26px, 7vw, 38px); color: #b34700; margin: 8px 0 4px; letter-spacing: -0.5px; }
+  .hero p { color: var(--sub); font-size: 15px; }
+  .panel { background: var(--card); border: 3px solid var(--line); border-radius: 20px; padding: 16px; margin-top: 14px;
+    box-shadow: 0 8px 24px rgba(180,90,0,.13); }
+  .name-row { display: flex; gap: 8px; align-items: center; }
+  .name-row label { font-weight: 700; white-space: nowrap; }
+  .name-row input { flex: 1; min-width: 0; font-size: 18px; padding: 10px 12px; border: 2px solid #ffc978; border-radius: 12px; font-family: inherit; }
+  .total { margin-top: 14px; }
+  .total .nums { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; }
+  .total .nums b { font-size: 26px; color: var(--orange-d); }
+  .bar { height: 14px; background: #ffeccc; border-radius: 99px; overflow: hidden; margin-top: 6px; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffb347, #ff7b00); border-radius: 99px; transition: width .4s; }
+  .tiers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .tier { background: #fffaf0; border: 3px solid #ffd98a; border-radius: 16px; padding: 12px 10px; text-align: left; position: relative; }
+  .tier:active { transform: scale(.97); }
+  .tier .st { color: #f59f00; font-size: 17px; letter-spacing: -1px; }
+  .tier .lb { font-weight: 800; font-size: 18px; margin: 2px 0; }
+  .tier .pt { font-size: 12.5px; color: var(--sub); }
+  .tier .pr { font-size: 13px; font-weight: 700; margin-top: 6px; }
+  .tier .bar { height: 8px; margin-top: 4px; }
+  .tier.done { border-color: #8ce99a; background: #f0fff3; }
+  .tier.done::after { content: "완료!"; position: absolute; top: 8px; right: 8px; background: var(--green); color: #fff; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 99px; }
+  .rules { font-size: 14px; line-height: 1.65; color: #5c4020; }
+  .rules h3 { font-size: 16px; margin-bottom: 6px; color: #b34700; }
+  .rules li { margin-left: 18px; }
+  .rank h3 { font-size: 16px; color: #b34700; margin-bottom: 8px; }
+  .rank ol { list-style: none; }
+  .rank li { display: flex; justify-content: space-between; padding: 6px 4px; border-bottom: 1px dashed #ffe0a8; font-size: 15px; }
+  .rank li:last-child { border-bottom: none; }
+  .rank .me { color: var(--orange-d); font-weight: 800; }
+  .rank .empty { color: var(--sub); font-size: 14px; }
+  .small-link { display: block; margin: 16px auto 0; background: none; color: #b08a55; font-size: 13px; text-decoration: underline; }
+  .home-link { display: inline-block; color: #b08a55; font-size: 14px; text-decoration: none; }
+
+  /* ---------- 문제 ---------- */
+  .top { display: flex; align-items: center; gap: 8px; }
+  .top .back { background: #fff; border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px; font-size: 15px; font-weight: 700; }
+  .top .mid { flex: 1; min-width: 0; }
+  .top .mid .t1 { font-size: 13px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top .mid .bar { height: 10px; margin-top: 3px; }
+  .top .score { background: #fff; border: 2px solid var(--line); border-radius: 12px; padding: 6px 10px; font-weight: 800; font-size: 17px; color: var(--orange-d); min-width: 70px; text-align: center; }
+  .streak { text-align: center; height: 24px; margin-top: 6px; font-weight: 800; color: #e8590c; font-size: 15px; }
+  .qcard { background: var(--card); border: 3px solid var(--line); border-radius: 22px; padding: 18px 16px 16px; margin-top: 4px; box-shadow: 0 10px 26px rgba(180,90,0,.15); }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .tag { font-size: 12.5px; font-weight: 800; padding: 4px 10px; border-radius: 99px; color: #fff; }
+  .tag.mc { background: var(--sea); }
+  .tag.ty { background: #ae3ec9; }
+  .tag.num { background: #fff3d6; color: #b34700; }
+  .tag.pts { background: #fff3d6; color: #2b8a3e; margin-left: auto; }
+  .qtext { font-size: 16px; color: #6b5030; margin: 14px 0 6px; }
+  .qmain { font-size: clamp(24px, 7vw, 34px); font-weight: 800; line-height: 1.35; word-break: keep-all; color: #2b1a08; }
+  .qmain.def { font-size: clamp(19px, 5.4vw, 24px); font-weight: 700; }
+  .choices { display: grid; gap: 10px; margin-top: 16px; }
+  .choice { text-align: left; background: #fffaf0; border: 3px solid #ffe0a8; border-radius: 16px; padding: 14px 14px; font-size: 18px; font-weight: 700; line-height: 1.4; word-break: keep-all; display: flex; gap: 10px; align-items: flex-start; }
+  .choice .k { flex: none; width: 28px; height: 28px; border-radius: 50%; background: #ffd98a; color: #7a4a00; display: grid; place-items: center; font-size: 15px; }
+  .choice.small { font-size: 16px; font-weight: 600; }
+  .choice:active { transform: scale(.98); }
+  .choice.right { background: #ebfbee; border-color: #51cf66; }
+  .choice.wrong { background: #fff0f0; border-color: #ff8787; }
+  .choice:disabled { cursor: default; }
+
+  .answer-box { margin-top: 16px; }
+  .answer-box input { width: 100%; font-size: 26px; font-weight: 700; padding: 12px 14px; border: 3px solid #e5c2f0; border-radius: 16px; font-family: inherit; background: #fdf8ff; text-align: center; }
+  .answer-box input:focus { outline: none; border-color: #ae3ec9; }
+  .hintline { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 14px; color: #6b5030; gap: 8px; flex-wrap: wrap; }
+  .hintline .cho { font-weight: 800; letter-spacing: 2px; color: #ae3ec9; font-size: 18px; }
+  .btn-hint { background: #f3d9fa; color: #862e9c; font-weight: 800; font-size: 14px; padding: 7px 12px; border-radius: 99px; }
+  .btn-hint:disabled { opacity: .5; }
+
+  .pad { margin-top: 12px; background: #fbf3ff; border: 2px dashed #e5c2f0; border-radius: 16px; padding: 10px; }
+  .pad .ph { display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 800; color: #862e9c; margin-bottom: 8px; gap: 6px; }
+  .pad .ph small { font-weight: 600; color: #9c6fae; }
+  .seg { display: inline-flex; background: #fff; border: 2px solid #e5c2f0; border-radius: 99px; overflow: hidden; flex: none; }
+  .seg button { background: none; padding: 4px 12px; font-size: 18px; font-weight: 800; color: #862e9c; }
+  .seg button.on { background: #ae3ec9; color: #fff; }
+  .keys { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .keys button { background: #fff; border: 2px solid #e9cdf3; border-radius: 10px; padding: 8px 0; font-size: 20px; font-weight: 700; min-height: 44px; }
+  .keys button:active { background: #f3d9fa; }
+  .keys.fin { margin-top: 8px; grid-template-columns: repeat(8, 1fr); }
+  .keys.fin button { font-size: 16px; color: #862e9c; }
+  .keys.fin button.del { color: var(--red); }
+  .row-lab { font-size: 12.5px; color: #9c6fae; margin: 8px 0 4px; font-weight: 700; }
+
+  .actions { display: flex; gap: 10px; margin-top: 16px; }
+  .btn { flex: 1; font-size: 19px; font-weight: 800; padding: 15px; border-radius: 16px; background: var(--orange); color: #fff; box-shadow: 0 5px 0 var(--orange-d); }
+  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--orange-d); }
+  .btn.ghost { background: #fff; color: #8a6a3a; border: 2px solid #ffd98a; box-shadow: 0 5px 0 #f1cf8a; flex: 0 0 auto; padding: 15px 16px; font-size: 16px; }
+  .btn.green { background: var(--green); box-shadow: 0 5px 0 #237a35; }
+  .btn.big { width: 100%; display: block; margin-top: 14px; }
+
+  /* ---------- 정답 확인 ---------- */
+  .fb { margin-top: 14px; border-radius: 20px; padding: 16px; border: 3px solid; animation: pop .25s ease-out; }
+  .fb.ok { background: #ebfbee; border-color: #69db7c; }
+  .fb.no { background: #fff4e6; border-color: #ffa94d; }
+  .fb .head { font-size: 22px; font-weight: 900; }
+  .fb.ok .head { color: #2b8a3e; }
+  .fb.no .head { color: #d9480f; }
+  .fb .gain { float: right; font-size: 20px; font-weight: 900; color: #2b8a3e; }
+  .fb .word { font-size: 24px; font-weight: 900; margin-top: 8px; color: #2b1a08; word-break: keep-all; }
+  .fb .mean { font-size: 16px; margin-top: 4px; color: #5c4020; word-break: keep-all; }
+  .fb .yours { font-size: 14px; margin-top: 8px; color: #c92a2a; }
+  .fb .ex { margin-top: 10px; background: rgba(255,255,255,.75); border-radius: 12px; padding: 10px 12px; font-size: 15px; line-height: 1.55; word-break: keep-all; }
+  .fb .ex .jj { font-weight: 700; color: #2b1a08; }
+  .fb .ex .kk { color: #7a5a30; font-size: 14px; }
+  .fb .later { font-size: 13.5px; color: #a0522d; margin-top: 8px; }
+  @keyframes pop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+  .shake { animation: shake .3s; }
+
+  /* ---------- 단계 완료 ---------- */
+  .clear { text-align: center; padding-top: 30px; }
+  .clear .big-ic { font-size: 84px; animation: pop .5s; }
+  .clear h2 { font-size: 30px; color: #b34700; margin: 10px 0; }
+  .clear p { font-size: 17px; color: #5c4020; line-height: 1.6; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 18px; }
+  .stats div { background: #fff; border: 3px solid var(--line); border-radius: 16px; padding: 12px 4px; }
+  .stats b { display: block; font-size: 24px; color: var(--orange-d); }
+  .stats span { font-size: 13px; color: var(--sub); }
+  .toast { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); transform: translateX(-50%) translateY(-120px); background: #3a2410; color: #fff; padding: 10px 18px; border-radius: 99px; font-weight: 800; font-size: 16px; transition: transform .3s, opacity .3s; opacity: 0; z-index: 50; white-space: nowrap; pointer-events: none; }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .confetti { position: fixed; top: -20px; font-size: 26px; pointer-events: none; z-index: 40; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(540deg); } }
+  .snd { background: #fff; border: 2px solid var(--line); border-radius: 12px; width: 44px; height: 44px; font-size: 19px; flex: none; }
+  .home-top { display: flex; justify-content: space-between; align-items: center; }
+</style>
+</head>
+<body>
+
+<!-- ===== 홈 ===== -->
+<section id="home" class="screen on">
+  <div class="home-top"><a class="home-link" href="../">← 게임 목록</a><button class="snd" aria-label="소리 켜기/끄기">🔊</button></div>
+  <div class="hero">
+    <div class="icon">🍊🌊🗣️</div>
+    <h1>제주어 골든벨 퀴즈</h1>
+    <p>제주어 172문제를 모두 풀어 골든벨을 울려요!</p>
+  </div>
+
+  <div class="panel">
+    <div class="name-row">
+      <label for="nameInput">이름</label>
+      <input id="nameInput" maxlength="12" placeholder="이름을 써 주세요" autocomplete="off" />
+    </div>
+    <div class="total">
+      <div class="nums"><span>푼 문제 <b id="hDone">0</b> / <span id="hAll">0</span></span><span>점수 <b id="hScore">0</b></span></div>
+      <div class="bar"><i id="hBar"></i></div>
+    </div>
+    <div class="tiers" id="tierList"></div>
+  </div>
+
+  <div class="panel rules">
+    <h3>🎯 이렇게 놀아요</h3>
+    <ul>
+      <li>목숨은 없어요. <b>모든 문제를 맞히는 것</b>이 목표예요.</li>
+      <li>문제는 그때그때 <b>객관식</b> 또는 <b>주관식</b>으로 나와요. 같은 문제도 다음엔 다르게 나와요!</li>
+      <li>점수: 별 하나에 10점. 주관식은 <b>2배</b>!</li>
+      <li>틀린 문제는 조금 뒤에 다시 나와요. 다시 맞히면 절반 점수.</li>
+      <li>주관식은 <b>ㅔ·ㅐ까지 정확히</b> 써야 해요. 아래아(ㆍ)는 <b>아래아 버튼판</b>으로 써요.</li>
+      <li>연속으로 맞히면 🔥 보너스 점수! 푼 기록은 자동으로 저장돼요.</li>
+    </ul>
+  </div>
+
+  <div class="panel rank">
+    <h3>🏆 골든벨 랭킹</h3>
+    <ol id="rankList"><li class="empty">불러오는 중…</li></ol>
+  </div>
+
+  <button class="small-link" id="resetBtn">기록 지우고 처음부터 하기</button>
+</section>
+
+<!-- ===== 문제 ===== -->
+<section id="play" class="screen">
+  <div class="top">
+    <button class="back" id="backBtn">← 그만</button>
+    <div class="mid">
+      <div class="t1" id="pTier"></div>
+      <div class="bar"><i id="pBar"></i></div>
+    </div>
+    <div class="score" id="pScore">0</div>
+    <button class="snd" aria-label="소리 켜기/끄기">🔊</button>
+  </div>
+  <div class="streak" id="pStreak"></div>
+  <div class="qcard" id="qcard"></div>
+</section>
+
+<!-- ===== 단계 완료 ===== -->
+<section id="clear" class="screen">
+  <div class="clear">
+    <div class="big-ic" id="cIcon">🎉</div>
+    <h2 id="cTitle">단계 완료!</h2>
+    <p id="cMsg"></p>
+    <div class="stats">
+      <div><b id="cScore">0</b><span>총 점수</span></div>
+      <div><b id="cDone">0</b><span>푼 문제</span></div>
+      <div><b id="cBest">0</b><span>최고 연속</span></div>
+    </div>
+    <button class="btn big" id="cHome">다른 단계 고르기</button>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script src="questions.js"></script>
+<script src="../supabase-config.js"></script>
+<script src="../leaderboard.js"></script>
+<script>
+/* =========================================================
+   아래아(ㆍ) 글자 만들기
+   ========================================================= */
+const INI = { "ㄱ":0x1100,"ㄲ":0x1101,"ㄴ":0x1102,"ㄷ":0x1103,"ㄸ":0x1104,"ㄹ":0x1105,"ㅁ":0x1106,"ㅂ":0x1107,"ㅃ":0x1108,
+  "ㅅ":0x1109,"ㅆ":0x110A,"ㅇ":0x110B,"ㅈ":0x110C,"ㅉ":0x110D,"ㅊ":0x110E,"ㅋ":0x110F,"ㅌ":0x1110,"ㅍ":0x1111,"ㅎ":0x1112 };
+const FIN = { "ㄱ":0x11A8,"ㄲ":0x11A9,"ㄳ":0x11AA,"ㄴ":0x11AB,"ㄵ":0x11AC,"ㄶ":0x11AD,"ㄷ":0x11AE,"ㄹ":0x11AF,"ㄺ":0x11B0,
+  "ㄻ":0x11B1,"ㄼ":0x11B2,"ㄽ":0x11B3,"ㄾ":0x11B4,"ㄿ":0x11B5,"ㅀ":0x11B6,"ㅁ":0x11B7,"ㅂ":0x11B8,"ㅄ":0x11B9,"ㅅ":0x11BA,
+  "ㅆ":0x11BB,"ㅇ":0x11BC,"ㅈ":0x11BD,"ㅊ":0x11BE,"ㅋ":0x11BF,"ㅌ":0x11C0,"ㅍ":0x11C1,"ㅎ":0x11C2 };
+const ARAE = "ᆞ", SSANG = "ᆢ";
+const ch = c => String.fromCharCode(c);
+const isOldV = c => c === ARAE || c === SSANG;
+const isIni = c => { const k = c.charCodeAt(0); return k >= 0x1100 && k <= 0x1112; };
+const isFin = c => { const k = c.charCodeAt(0); return k >= 0x11A8 && k <= 0x11C2; };
+const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+
+// "<ㅎ.ㄹ>" 같은 표기를 진짜 옛한글 자모로
+function old(s) {
+  return (s || "").replace(/<([ㄱ-ㅎ])([.:])([ㄱ-ㅎ]?)>/g,
+    (m, c, v, f) => ch(INI[c]) + (v === ":" ? SSANG : ARAE) + (f ? ch(FIN[f]) : ""));
+}
+// 채점용: 띄어쓰기·문장부호만 무시. ㅔ/ㅐ, 아래아는 정확히 비교.
+function norm(s) {
+  s = (s || "").normalize("NFC").replace(/[\s.,!?~'"“”‘’·…\-]/g, "");
+  // 아래아 뒤에 따로 쓴 자음(ㄹ 등)은 받침으로 봐 줌: ᄀᆞ + ㄹ → ᄀᆞᆯ
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (FIN[c] && i > 0 && isOldV(s[i - 1])) out += ch(FIN[c]);
+    else out += c;
+  }
+  return out.normalize("NFD");
+}
+// 초성 힌트
+function choseong(word) {
+  let out = "";
+  for (const c of word) {
+    const k = c.charCodeAt(0);
+    if (k >= 0xAC00 && k <= 0xD7A3) out += CHO[Math.floor((k - 0xAC00) / 588)];
+    else if (isIni(c)) out += CHO[k - 0x1100];
+    else if (c === " ") out += " ";
+  }
+  return out;
+}
+// 화면에 보이는 글자 수 (옛한글 한 덩어리 = 1글자)
+function countLetters(word) {
+  let n = 0;
+  for (const c of word) { if (c === " ") continue; if (isOldV(c) || isFin(c)) continue; n++; }
+  return n;
+}
+
+/* =========================================================
+   문제 데이터
+   ========================================================= */
+const TIERS = window.JEJU_TIERS.map((t, ti) => ({
+  stars: t.stars, label: t.label,
+  items: t.items.map(r => ({
+    n: r[0], tier: ti, stars: t.stars,
+    words: r[1].split("/").map(w => old(w.trim())),
+    mean: r[2], ex: old(r[3] || ""), exk: r[4] || ""
+  }))
+}));
+const ALL = TIERS.flatMap(t => t.items);
+const BY_N = Object.fromEntries(ALL.map(q => [q.n, q]));
+// 뜻이 같은 문제끼리는 서로의 답도 정답 (예: 가찹다 / ᄇᆞ디다 = 가깝다)
+const SAME_MEAN = {};
+ALL.forEach(q => (SAME_MEAN[q.mean] = SAME_MEAN[q.mean] || []).push(q));
+
+const STARS = n => "★".repeat(n);
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* =========================================================
+   저장
+   ========================================================= */
+const SAVE_KEY = "jeju-quiz-v1";
+const RANK_KEY = "jeju-quiz-rank";
+function fresh() { return { name: "", score: 0, done: {}, wrong: {}, queues: {}, streak: 0, best: 0 }; }
+let S = (() => { try { return Object.assign(fresh(), JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch (e) { return fresh(); } })();
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+const doneCount = ti => TIERS[ti].items.filter(q => S.done[q.n]).length;
+const totalDone = () => ALL.filter(q => S.done[q.n]).length;
+
+/* =========================================================
+   소리
+   ========================================================= */
+let soundOn = true, actx = null;
+try { soundOn = localStorage.getItem("jeju-quiz-sound") !== "off"; } catch (e) {}
+function beep(notes) {
+  if (!soundOn) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    let t = actx.currentTime;
+    notes.forEach(([f, d, type]) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || "triangle"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + d); t += d * 0.8;
+    });
+  } catch (e) {}
+}
+const SND = {
+  ok: () => beep([[660, .12], [880, .18]]),
+  no: () => beep([[300, .16, "sawtooth"], [220, .22, "sawtooth"]]),
+  combo: () => beep([[660, .1], [880, .1], [1100, .2]]),
+  clear: () => beep([[523, .15], [659, .15], [784, .15], [1046, .4]])
+};
+const sndBtns = document.querySelectorAll(".snd");
+const paintSnd = () => sndBtns.forEach(b => b.textContent = soundOn ? "🔊" : "🔇");
+paintSnd();
+sndBtns.forEach(b => b.onclick = () => { soundOn = !soundOn; paintSnd(); try { localStorage.setItem("jeju-quiz-sound", soundOn ? "on" : "off"); } catch (e) {} });
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 1600);
+}
+function confetti(n) {
+  const em = ["🍊", "🌺", "⭐", "🎉", "🌊", "🐚"];
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement("div");
+    d.className = "confetti"; d.textContent = pick(em);
+    d.style.left = Math.random() * 100 + "vw";
+    d.style.animationDuration = 2 + Math.random() * 2 + "s";
+    d.style.animationDelay = Math.random() * .8 + "s";
+    document.body.appendChild(d); setTimeout(() => d.remove(), 5000);
+  }
+}
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.toggle("on", s.id === id));
+  window.scrollTo(0, 0);
+}
+
+/* =========================================================
+   홈
+   ========================================================= */
+const nameInput = document.getElementById("nameInput");
+nameInput.value = S.name || "";
+nameInput.oninput = () => { S.name = nameInput.value.trim(); save(); };
+
+function renderHome() {
+  document.getElementById("hDone").textContent = totalDone();
+  document.getElementById("hAll").textContent = ALL.length;
+  document.getElementById("hScore").textContent = S.score;
+  document.getElementById("hBar").style.width = (totalDone() / ALL.length * 100) + "%";
+  const list = document.getElementById("tierList");
+  list.innerHTML = "";
+  TIERS.forEach((t, ti) => {
+    const d = doneCount(ti), all = t.items.length;
+    const b = document.createElement("button");
+    b.className = "tier" + (d === all ? " done" : "");
+    b.innerHTML = `<div class="st">${STARS(t.stars)}</div><div class="lb">${t.label}</div>
+      <div class="pt">${t.items[0].n}~${t.items[all - 1].n}번 · 객관식 ${t.stars * 10}점 / 주관식 ${t.stars * 20}점</div>
+      <div class="pr">${d} / ${all}</div><div class="bar"><i style="width:${d / all * 100}%"></i></div>`;
+    b.onclick = () => startTier(ti);
+    list.appendChild(b);
+  });
+  renderRank();
+}
+
+function localRank() { try { return JSON.parse(localStorage.getItem(RANK_KEY)) || []; } catch (e) { return []; } }
+async function submitRank() {
+  const name = S.name || "익명";
+  const loc = localRank().filter(r => r.name !== name);
+  loc.push({ name, score: S.score, done: totalDone() });
+  loc.sort((a, b) => b.score - a.score);
+  try { localStorage.setItem(RANK_KEY, JSON.stringify(loc.slice(0, 20))); } catch (e) {}
+  if (window.Leaderboard && Leaderboard.online) await Leaderboard.submitScore("jeju-quiz", name, S.score, { done: totalDone() });
+}
+async function renderRank() {
+  const ol = document.getElementById("rankList");
+  let rows = null;
+  if (window.Leaderboard && Leaderboard.online) rows = await Leaderboard.topScores("jeju-quiz", 40);
+  if (rows) {
+    // 한 사람은 가장 높은 점수 하나만
+    const seen = {}; rows = rows.filter(r => seen[r.name] ? false : (seen[r.name] = true))
+      .map(r => ({ name: r.name, score: r.score, done: r.extra && r.extra.done }));
+  } else rows = localRank();
+  rows = rows.slice(0, 10);
+  if (!rows.length) { ol.innerHTML = `<li class="empty">아직 기록이 없어요. 첫 번째 주인공이 되어 보세요!</li>`; return; }
+  const medal = ["🥇", "🥈", "🥉"];
+  ol.innerHTML = rows.map((r, i) =>
+    `<li class="${r.name === (S.name || "익명") ? "me" : ""}"><span>${medal[i] || (i + 1) + "."} ${esc(r.name)}</span>
+     <span>${r.score}점${r.done != null ? ` · ${r.done}문제` : ""}</span></li>`).join("");
+}
+
+document.getElementById("resetBtn").onclick = () => {
+  if (!confirm("지금까지 푼 기록과 점수를 모두 지울까요?")) return;
+  const name = S.name; S = fresh(); S.name = name; save(); renderHome();
+};
+
+/* =========================================================
+   문제 진행
+   ========================================================= */
+let tierIdx = 0, cur = null, answered = false;
+
+function startTier(ti) {
+  if (!S.name) { nameInput.focus(); nameInput.classList.add("shake"); setTimeout(() => nameInput.classList.remove("shake"), 400); toast("먼저 이름을 써 주세요!"); return; }
+  tierIdx = ti;
+  let q = (S.queues[ti] || []).filter(n => BY_N[n] && !S.done[n]);
+  const left = TIERS[ti].items.filter(it => !S.done[it.n] && !q.includes(it.n)).map(it => it.n);
+  q = q.concat(shuffle(left));
+  if (!q.length) { toast("이 단계는 다 풀었어요! 🎉"); return; }
+  S.queues[ti] = q; save();
+  show("play");
+  nextQuestion();
+}
+
+function nextQuestion() {
+  const q = S.queues[tierIdx];
+  if (!q.length) return tierClear();
+  const item = BY_N[q[0]];
+  // 그때그때 무작위로 객관식 / 주관식
+  const kind = Math.random() < 0.5 ? "mc" : "ty";
+  cur = { item, kind, dir: Math.random() < 0.5 ? "w2m" : "m2w", hint: false };
+  answered = false;
+  renderTop();
+  kind === "mc" ? renderMC() : renderTyped();
+}
+
+function renderTop() {
+  const t = TIERS[tierIdx], d = doneCount(tierIdx);
+  document.getElementById("pTier").textContent = `${STARS(t.stars)} ${t.label} · ${d} / ${t.items.length} 완료`;
+  document.getElementById("pBar").style.width = (d / t.items.length * 100) + "%";
+  document.getElementById("pScore").textContent = S.score;
+  document.getElementById("pStreak").textContent = S.streak >= 2 ? `🔥 ${S.streak}연속 정답!` : "";
+}
+
+function basePoints() {
+  const it = cur.item;
+  let p = it.stars * 10 * (cur.kind === "ty" ? 2 : 1);
+  if (cur.hint) p = Math.ceil(p / 2);
+  if (S.wrong[it.n]) p = Math.ceil(p / 2);
+  return p;
+}
+function tagsHTML() {
+  const it = cur.item;
+  return `<div class="tags">
+    <span class="tag ${cur.kind === "mc" ? "mc" : "ty"}">${cur.kind === "mc" ? "객관식" : "주관식 ✍️"}</span>
+    <span class="tag num">${it.n}번 ${STARS(it.stars)}</span>
+    ${S.wrong[it.n] ? `<span class="tag num">다시 도전</span>` : ""}
+    <span class="tag pts" id="ptsTag">+${basePoints()}점</span></div>`;
+}
+const wordsText = it => it.words.join(" / ");
+
+/* ---------- 객관식 ---------- */
+function renderMC() {
+  const it = cur.item, card = document.getElementById("qcard");
+  const isDa = s => /다$/.test(s);
+  const pool = shuffle(ALL.filter(o => o !== it && o.mean !== it.mean && !o.words.some(w => it.words.includes(w))));
+  let dist;
+  if (cur.dir === "w2m") {
+    const same = pool.filter(o => isDa(o.mean) === isDa(it.mean));
+    dist = (same.length >= 3 ? same : pool).slice(0, 3).map(o => o.mean);
+  } else {
+    const same = pool.filter(o => isDa(o.words[0]) === isDa(it.words[0]) && o.tier === it.tier);
+    dist = (same.length >= 3 ? same : pool).slice(0, 3).map(o => pick(o.words));
+  }
+  const right = cur.dir === "w2m" ? it.mean : pick(it.words);
+  const opts = shuffle([right, ...dist]);
+  const long = opts.some(o => o.length > 22);
+  card.innerHTML = tagsHTML() + (cur.dir === "w2m"
+    ? `<div class="qtext">제주어 이 말은 무슨 뜻일까요?</div><div class="qmain">${esc(wordsText(it))}</div>`
+    : `<div class="qtext">이 뜻을 가진 제주어는 무엇일까요?</div><div class="qmain def">${esc(it.mean)}</div>`) +
+    `<div class="choices">${opts.map((o, i) =>
+      `<button class="choice${long ? " small" : ""}" data-v="${esc(o)}"><span class="k">${i + 1}</span><span>${esc(o)}</span></button>`).join("")}</div>
+    <div id="fbBox"></div>`;
+  card.querySelectorAll(".choice").forEach(b => b.onclick = () => {
+    if (answered) return;
+    const ok = b.dataset.v === right;
+    card.querySelectorAll(".choice").forEach(x => {
+      x.disabled = true;
+      if (x.dataset.v === right) x.classList.add("right");
+    });
+    if (!ok) b.classList.add("wrong");
+    judge(ok, ok ? "" : b.dataset.v);
+  });
+}
+
+/* ---------- 주관식 ---------- */
+let araeMode = ARAE;
+function renderTyped() {
+  const it = cur.item, card = document.getElementById("qcard");
+  const target = it.words[0];
+  const cons = ["ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
+  const fins = ["ㄱ", "ㄴ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ"];
+  card.innerHTML = tagsHTML() +
+    `<div class="qtext">이 뜻을 가진 제주어를 써 보세요${it.words.length > 1 ? " (여러 말 중 하나만 써도 돼요)" : ""}</div>
+     <div class="qmain def">${esc(it.mean)}</div>
+     <div class="answer-box">
+       <input id="ans" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="제주어로 쓰기" enterkeyhint="done" />
+       <div class="hintline"><span>📏 ${countLetters(target)}글자 <span class="cho" id="choHint"></span></span>
+         <button class="btn-hint" id="hintBtn">💡 초성 힌트 (점수 절반)</button></div>
+     </div>
+     <div class="pad">
+       <div class="ph"><span>아래아 버튼판 <small>필요할 때만 눌러요</small></span>
+         <span class="seg"><button data-v="${ARAE}" class="${araeMode === ARAE ? "on" : ""}">ㆍ</button><button data-v="${SSANG}" class="${araeMode === SSANG ? "on" : ""}">ᆢ</button></span></div>
+       <div class="keys" id="keyIni">${cons.map(c => `<button data-c="${c}">${ch(INI[c]) + araeMode}</button>`).join("")}</div>
+       <div class="row-lab">받침 붙이기 (방금 넣은 아래아 글자에)</div>
+       <div class="keys fin">${fins.map(f => `<button data-f="${f}">+${f}</button>`).join("")}<button class="del" data-del="1">⌫</button></div>
+     </div>
+     <div class="actions"><button class="btn ghost" id="giveBtn">모르겠어요</button><button class="btn" id="okBtn">정답 확인</button></div>
+     <div id="fbBox"></div>`;
+  const inp = document.getElementById("ans");
+  const keepFocus = e => e.preventDefault(); // 버튼을 눌러도 입력칸 포커스 유지
+  card.querySelectorAll(".pad button").forEach(b => b.addEventListener("pointerdown", keepFocus));
+  card.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+    araeMode = b.dataset.v;
+    card.querySelectorAll(".seg button").forEach(x => x.classList.toggle("on", x === b));
+    card.querySelectorAll("#keyIni button").forEach(x => x.textContent = ch(INI[x.dataset.c]) + araeMode);
+  });
+  card.querySelectorAll("#keyIni button").forEach(b => b.onclick = () => insertAt(inp, ch(INI[b.dataset.c]) + araeMode));
+  card.querySelectorAll(".keys.fin button").forEach(b => b.onclick = () => {
+    if (b.dataset.del) return padDelete(inp);
+    const p = inp.selectionStart ?? inp.value.length;
+    if (p > 0 && isOldV(inp.value[p - 1])) insertAt(inp, ch(FIN[b.dataset.f]));
+    else toast("받침은 아래아 글자 바로 뒤에 붙여요");
+  });
+  document.getElementById("hintBtn").onclick = e => {
+    cur.hint = true; e.target.disabled = true;
+    document.getElementById("choHint").textContent = "· " + choseong(target);
+    document.getElementById("ptsTag").textContent = "+" + basePoints() + "점";
+  };
+  document.getElementById("giveBtn").onclick = () => { if (!answered) judge(false, ""); };
+  document.getElementById("okBtn").onclick = checkTyped;
+  inp.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); checkTyped(); } });
+  if (matchMedia("(hover: hover)").matches) inp.focus();
+}
+function insertAt(inp, text) {
+  const s = inp.selectionStart ?? inp.value.length, e = inp.selectionEnd ?? s;
+  inp.setRangeText(text, s, e, "end");
+}
+function padDelete(inp) {
+  let p = inp.selectionStart ?? inp.value.length;
+  if (inp.selectionEnd > p) { inp.setRangeText("", p, inp.selectionEnd, "end"); return; }
+  if (p === 0) return;
+  const v = inp.value; let s = p - 1;
+  // 옛한글 덩어리(초성+아래아+받침)는 한 번에 지우기
+  if (isFin(v[s]) && s > 0 && isOldV(v[s - 1])) s--;
+  if (isOldV(v[s]) && s > 0 && isIni(v[s - 1])) s--;
+  inp.setRangeText("", s, p, "end");
+}
+function checkTyped() {
+  if (answered) return;
+  const inp = document.getElementById("ans");
+  const raw = inp.value.trim();
+  if (!raw) { inp.classList.add("shake"); setTimeout(() => inp.classList.remove("shake"), 350); return; }
+  const accepts = SAME_MEAN[cur.item.mean].flatMap(o => o.words).map(norm);
+  judge(accepts.includes(norm(raw)), raw);
+}
+
+/* ---------- 채점 ---------- */
+function judge(ok, yours) {
+  answered = true;
+  const it = cur.item;
+  let gain = 0, comboMsg = "";
+  if (ok) {
+    S.streak++; S.best = Math.max(S.best, S.streak);
+    gain = basePoints();
+    if (S.streak >= 3) { const bonus = Math.min(S.streak - 2, 5) * 2; gain += bonus; comboMsg = ` (🔥보너스 +${bonus})`; }
+    S.score += gain;
+    S.done[it.n] = true;
+    S.queues[tierIdx].shift();
+    SND.ok();
+    if (S.streak > 0 && S.streak % 5 === 0) { SND.combo(); toast(`🔥 ${S.streak}연속 정답! 대단해요!`); }
+  } else {
+    S.streak = 0;
+    S.wrong[it.n] = (S.wrong[it.n] || 0) + 1;
+    // 틀린 문제는 3~5문제 뒤에 다시
+    const q = S.queues[tierIdx]; q.shift();
+    q.splice(Math.min(q.length, 3 + Math.floor(Math.random() * 3)), 0, it.n);
+    SND.no();
+    const card = document.getElementById("qcard"); card.classList.add("shake"); setTimeout(() => card.classList.remove("shake"), 350);
+  }
+  save();
+  const total = totalDone();
+  if (ok && total % 20 === 0) toast(`🎯 ${total}문제 돌파!`);
+
+  card_disable();
+  const fb = document.getElementById("fbBox");
+  fb.innerHTML = `<div class="fb ${ok ? "ok" : "no"}">
+      ${ok ? `<span class="gain">+${gain}</span>` : ""}
+      <div class="head">${ok ? "딱 맞았수다! 🎉" : (yours ? "아쉬워요! 😮" : "같이 알아봐요 📖")}</div>
+      ${ok && comboMsg ? `<div class="mean">${comboMsg}</div>` : ""}
+      <div class="word">${esc(wordsText(it))}</div>
+      <div class="mean">= ${esc(it.mean)}</div>
+      ${!ok && yours && cur.kind === "ty" ? `<div class="yours">내가 쓴 답: ${esc(yours)}</div>` : ""}
+      ${it.ex ? `<div class="ex"><div class="jj">💬 ${esc(it.ex)}</div><div class="kk">(${esc(it.exk)})</div></div>` : ""}
+      ${!ok ? `<div class="later">🔁 이 문제는 조금 뒤에 다시 나와요.</div>` : ""}
+    </div>
+    <div class="actions"><button class="btn ${ok ? "green" : ""}" id="nextBtn">다음 문제 ▶</button></div>`;
+  renderTop();
+  const nb = document.getElementById("nextBtn");
+  nb.onclick = nextQuestion;
+  setTimeout(() => nb.scrollIntoView({ behavior: "smooth", block: "nearest" }), 60);
+  if (matchMedia("(hover: hover)").matches) nb.focus();
+}
+function card_disable() {
+  const card = document.getElementById("qcard");
+  card.querySelectorAll(".answer-box input, .pad button, #okBtn, #giveBtn, #hintBtn").forEach(x => x.disabled = true);
+  const a = card.querySelector(".actions:not(:last-child)");
+  if (a && cur.kind === "ty") a.style.display = "none";
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+}
+
+/* ---------- 단계 완료 ---------- */
+async function tierClear() {
+  const t = TIERS[tierIdx], all = totalDone() === ALL.length;
+  SND.clear(); confetti(all ? 60 : 30);
+  document.getElementById("cIcon").textContent = all ? "🔔" : "🎉";
+  document.getElementById("cTitle").textContent = all ? "골든벨 울렸수다!" : `${STARS(t.stars)} ${t.label} 단계 완료!`;
+  document.getElementById("cMsg").innerHTML = all
+    ? `${esc(S.name)} 님, 제주어 ${ALL.length}문제를 모두 풀었어요!<br>이제 제주어 박사예요. 폭삭 속았수다! 👏`
+    : `${t.items.length}문제를 모두 맞혔어요!<br>남은 단계도 도전해 보세요.`;
+  document.getElementById("cScore").textContent = S.score;
+  document.getElementById("cDone").textContent = totalDone() + "/" + ALL.length;
+  document.getElementById("cBest").textContent = S.best;
+  show("clear");
+  await submitRank();
+}
+document.getElementById("cHome").onclick = () => { show("home"); renderHome(); };
+document.getElementById("backBtn").onclick = async () => {
+  show("home"); renderHome();
+  if (totalDone() > 0) { await submitRank(); renderRank(); }
+};
+
+// 숫자키 1~4로 객관식 고르기 (컴퓨터용)
+document.addEventListener("keydown", e => {
+  if (!document.getElementById("play").classList.contains("on") || answered || cur?.kind !== "mc") return;
+  const i = +e.key - 1; const bs = document.querySelectorAll(".choice");
+  if (i >= 0 && i < bs.length) bs[i].click();
+});
+
+renderHome();
+</script>
+</body>
+</html>
