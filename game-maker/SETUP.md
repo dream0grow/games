@@ -39,6 +39,14 @@ npx supabase functions deploy game-maker --project-ref lanootakxybeshnsrnyu
 - **AI로 그림 만들기**(Gemini): Supabase 비밀값에 `GEMINI_API_KEY` 를 넣으면 켜져요. 모델은 `GEMINI_IMAGE_MODEL`(기본 `gemini-nano-banana-2.1`).
 - PRO만 다른 코드로 막고 싶으면 `PRO_CODE` 비밀값을 설정하세요 (없으면 교실 코드와 같음). PRO 게임은 1개에 대략 300~600원 정도 들어요.
 
+## 인물 퀴즈 만들기 (`game-maker/quiz/`)
+- 이 화면에서는 **반드시 인물 퀴즈 게임**만 만들어져요. 아이가 다른 게임 아이디어를 적어도 서버가 인물 퀴즈 전용 규칙으로 만들어요.
+- 기본 문제는 `game-maker/quiz/people.js` 에 있어요 (인물 10명 · 65문제). 우리반 인물 PPT 9개의 '알아봅시다' 내용과 퀴즈를 바탕으로,
+  틀린 내용은 바로잡고(🔧) 모자란 문제는 보충(➕)했어요. 세종대왕은 PPT가 없어서 선생님 자료로 채웠어요.
+- 아이들은 화면에서 인물을 고르고, 문제·보기·정답·설명을 고치거나 새 문제(고르기 / O·X)를 넣을 수 있어요. ↺ 버튼으로 기본 문제로 되돌릴 수 있어요.
+- ② AI 질문 단계에서 AI가 문제를 훑어보고 사실과 다르거나 어려운 곳을 🔎 로 알려 줘요.
+- 기본 문제를 바꾸고 싶으면 `people.js` 를 고치면 돼요. 이 화면은 기존 서버 함수를 쓰므로, 처음 한 번 서버 함수를 다시 올려야(아래 3번의 `functions deploy`) 퀴즈 규칙이 적용돼요.
+
 ## 4. 확인
 `https://dream0grow.github.io/games/game-maker/` 접속 → 예시 아이디어 하나 눌러서 끝까지 만들어 보세요.
 
@@ -55,6 +63,7 @@ npx supabase functions deploy game-maker --project-ref lanootakxybeshnsrnyu
 | 파일 | 역할 |
 |------|------|
 | `game-maker/index.html` | 아이들이 게임을 만드는 화면 (생각 적기 → AI 질문 → 만들기 → 놀기·고치기·올리기) |
+| `game-maker/quiz/` | 인물 퀴즈 게임 만들기 (`people.js` 기본 문제 · `editor.js` 문제 고치기 화면) |
 | `game-maker/gallery.html` | 우리반 게임 목록 |
 | `game-maker/play.html?id=N` | 친구 게임 하기 |
 | `game-maker/api.js`, `style.css` | 공용 코드·스타일 |

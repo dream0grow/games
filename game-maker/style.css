@@ -242,3 +242,66 @@ body.pro footer { color: #9775fa; }
 .gact { display: flex; gap: 6px; justify-content: center; }
 .gact .btn.small { font-size: 14px; padding: 6px 10px; }
 .gcard .date { color: var(--ink-faint); font-size: 12px; margin-top: 6px; }
+
+/* 인물 퀴즈 */
+body.quiz {
+  --bg1: #e7f5ff; --bg2: #d0ebff;
+  --accent: #1864ab; --accent-2: #1c7ed6; --line: #a5d8ff;
+  --shadow: 0 10px 30px rgba(24, 100, 171, 0.16);
+}
+body.quiz input[type=text], body.quiz textarea { border-color: #d0ebff; background: #f8fcff; }
+body.quiz .steps .s.done { background: #d0ebff; color: var(--accent); }
+body.quiz .q { border-top-color: #d0ebff; }
+body.quiz .choice { border-color: #d0ebff; }
+body.quiz .imgcard { border-color: #d0ebff; background: #f8fcff; }
+body.quiz .bar { background: #d0ebff; }
+body.quiz .chip { background: #f1f8ff; }
+body.quiz footer { color: #4dabf7; }
+.quiz-banner { background: linear-gradient(90deg, #1864ab, #1c7ed6); box-shadow: 0 8px 24px rgba(24, 100, 171, .3); }
+
+.qzpick { display: flex; gap: 8px; flex-wrap: wrap; }
+.qzchip {
+  background: #fff; border: 3px solid var(--line); padding: 8px 14px; border-radius: 999px;
+  font-size: 17px; font-weight: 800; color: var(--ink-faint);
+}
+.qzchip.on { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+.qzcount { margin-left: auto; align-self: center; font-weight: 700; }
+
+details.qzp { margin-top: 10px; border: 3px solid var(--line); border-radius: 18px; background: #fff; overflow: hidden; }
+details.qzp > summary {
+  list-style: none; cursor: pointer; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+}
+details.qzp > summary::-webkit-details-marker { display: none; }
+details.qzp > summary::after { content: "✏️ 고치기"; margin-left: auto; font-size: 14px; color: var(--accent); font-weight: 700; }
+details.qzp[open] > summary::after { content: "▲ 접기"; }
+details.qzp[open] > summary { background: #f1f8ff; border-bottom: 2px solid var(--line); }
+.qzname { font-weight: 800; font-size: 19px; }
+.qzsub { color: var(--ink-soft); font-size: 14px; }
+.qzbody { padding: 12px 14px 16px; }
+.qzlabel { display: block; font-weight: 800; margin: 10px 0 6px; }
+.qzlabel .sub { font-weight: 400; color: var(--ink-soft); font-size: 14px; }
+textarea.qzfacts { min-height: 110px; font-size: 16px; }
+.qzq { border: 2px dashed var(--line); border-radius: 14px; padding: 10px 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.qzq input[type=text] { font-size: 17px; padding: 9px 12px; border-width: 2px; border-radius: 12px; }
+.qzhead { display: flex; align-items: center; gap: 8px; }
+.qztag { font-size: 13px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #e7f5ff; color: #1864ab; }
+.qztag-ppt { background: #fff3bf; color: #8f5e00; }
+.qztag-fix { background: #ffe8cc; color: #b34700; }
+.qztag-add { background: #d3f9d8; color: #2b8a3e; }
+.qztag-kid { background: #f3d9fa; color: #862e9c; }
+.qzdel { margin-left: auto; background: none; font-size: 20px; padding: 2px 6px; border-radius: 8px; }
+.qzdel:hover { background: #fff5f5; }
+.qznote { font-size: 13px; color: var(--ink-faint); margin-top: -4px; }
+.qzchoices { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.qzc { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 12px; border: 2px solid transparent; }
+.qzc.right { border-color: var(--green); background: #ebfbee; }
+.qzc input[type=radio] { width: 22px; height: 22px; flex: none; accent-color: var(--green); }
+.qzc input[type=text] { flex: 1; min-width: 0; }
+.qzox { font-size: 22px; font-weight: 800; padding: 0 10px; }
+.qzx { background: none; color: var(--ink-faint); font-size: 16px; padding: 4px; }
+.qzfoot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.qzfoot .hint { font-size: 13px; }
+.qzq input.qzex { font-size: 15px; background: #fffef3; }
+
+.checks { background: #fff9db; border: 3px solid #ffe066; border-radius: 18px; padding: 12px 16px; margin: 4px 0 8px; }
+.checks ul { margin: 6px 0 4px 20px; font-size: 16px; }

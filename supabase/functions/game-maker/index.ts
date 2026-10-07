@@ -26,6 +26,10 @@
 //   {action:"image", prompt}                   → JSON {data, media_type} (Gemini 그림 만들기)
 //   {action:"check"}                           → JSON {ok:true, gemini} (교실 코드 확인용)
 //
+// idea.quiz: 인물 퀴즈 화면(game-maker/quiz/)에서 보냄. 있으면 질문·만들기·고치기 모두
+//   "인물 퀴즈 게임" 전용 프롬프트를 써서, 어떤 아이디어를 적어도 반드시 인물 퀴즈 게임이 됩니다.
+//   { selected:["sejong",...], people:[{id, name, facts:[...], questions:[{q, c:[보기], a:정답번호, e:설명}]}] }
+//
 // idea.images: [{data: base64, media_type, note}] (최대 20장). 게임 코드에서는
 // "__IMG1__" 같은 자리표시 문자열로 쓰고, 브라우저가 실제 그림으로 바꿔 넣습니다.
 // =========================================================
@@ -65,7 +69,10 @@ const CONF = {
 
 // ---------- 아이들 입력 정리 ----------
 type Img = { data: string; media_type: string; note?: string };
-type Idea = { title?: string; author?: string; concept?: string; rules?: string; images?: Img[] };
+type QuizQ = { q?: string; c?: string[]; a?: number; e?: string };
+type QuizPerson = { id?: string; name?: string; facts?: string[]; questions?: QuizQ[] };
+type Quiz = { selected?: string[]; people?: QuizPerson[] };
+type Idea = { title?: string; author?: string; concept?: string; rules?: string; images?: Img[]; quiz?: Quiz };
 type Answer = { question: string; answer: string };
 
 const clip = (s: unknown, n: number) => String(s ?? "").slice(0, n).trim();
@@ -79,6 +86,49 @@ function cleanImages(idea: Idea): Img[] {
     .map((im) => ({ data: im.data, media_type: im.media_type, note: clip(im.note, 80) }));
 }
 
+// ---------- 인물 퀴즈 ----------
+type CleanPerson = { name: string; facts: string[]; questions: { q: string; c: string[]; a: number; e: string }[] };
+
+// 아이가 고른 인물만, 빈 문제는 빼고, 길이 제한
+function cleanQuiz(idea: Idea): CleanPerson[] {
+  const quiz = idea.quiz;
+  if (!quiz || !Array.isArray(quiz.people)) return [];
+  const selected = Array.isArray(quiz.selected) ? quiz.selected.map(String) : [];
+  return quiz.people
+    .filter((p) => p && selected.includes(String(p.id)))
+    .slice(0, 12)
+    .map((p) => ({
+      name: clip(p.name, 20),
+      facts: (Array.isArray(p.facts) ? p.facts : []).map((f) => clip(f, 200)).filter(Boolean).slice(0, 12),
+      questions: (Array.isArray(p.questions) ? p.questions : [])
+        .map((q) => {
+          const c = (Array.isArray(q?.c) ? q.c : []).map((x) => clip(x, 60)).slice(0, 4);
+          const a = Number(q?.a) || 0;
+          return { q: clip(q?.q, 150), c, a: a >= 0 && a < c.length ? a : 0, e: clip(q?.e, 150) };
+        })
+        .filter((q) => q.q && q.c.filter(Boolean).length >= 2)
+        .slice(0, 15),
+    }))
+    .filter((p) => p.name && p.questions.length);
+}
+
+function quizText(people: CleanPerson[]) {
+  let n = 0;
+  return people
+    .map((p, i) => {
+      const facts = p.facts.length ? p.facts.map((f) => `- ${f}`).join("\n") : "- (없음)";
+      const qs = p.questions
+        .map((q) => {
+          n++;
+          const choices = q.c.map((c, ci) => `${ci + 1}) ${c}`).join("  ");
+          return `  [${n}] ${q.q}\n      보기: ${choices}\n      정답: ${q.a + 1}) ${q.c[q.a]}${q.e ? `\n      설명: ${q.e}` : ""}`;
+        })
+        .join("\n");
+      return `### 인물 ${i + 1}. ${p.name}\n알아본 내용:\n${facts}\n문제:\n${qs}`;
+    })
+    .join("\n\n");
+}
+
 function ideaText(idea: Idea, answers: Answer[] = [], images: Img[] = []) {
   const lines = [
     `게임 이름: ${clip(idea.title, 60) || "(아직 없음)"}`,
@@ -90,6 +140,14 @@ function ideaText(idea: Idea, answers: Answer[] = [], images: Img[] = []) {
     lines.push(
       "아이가 넣은 그림 (위에 첨부한 순서대로):\n" +
         images.map((im, i) => `- 그림 ${i + 1} → 코드에서 "__IMG${i + 1}__" : ${im.note || "(설명 없음)"}`).join("\n"),
+    );
+  }
+  const quiz = cleanQuiz(idea);
+  if (quiz.length) {
+    lines.push(
+      `인물 퀴즈 문제 은행 (인물 ${quiz.length}명, 문제 ${quiz.reduce((s, p) => s + p.questions.length, 0)}개).\n` +
+        "우리반 친구들이 인물 PPT로 조사한 내용과 문제를 선생님이 바로잡은 것이고, 아이가 더 고치거나 보탰을 수 있습니다:\n\n" +
+        quizText(quiz),
     );
   }
   if (answers.length) {
@@ -203,6 +261,90 @@ ${COMMON_RULES}
 - 코드는 잘 정리해서 800~1300줄 정도. 설계는 짧게 끝내고 바로 코드를 쓰기 시작합니다.`,
 };
 
+// ---------- 인물 퀴즈 전용 프롬프트 ----------
+const QUIZ_SAFETY = `
+[인물 퀴즈 특별 규칙]
+- 이 게임은 우리 역사 인물을 배우는 학습용 퀴즈입니다. 문제 은행에 나오는 역사 인물의 이름과 업적은 그대로 써도 됩니다
+  ('실제 사람의 이름을 쓰지 않는다'는 규칙은 이 역사 인물들에게는 적용하지 않습니다. 아이 이름은 여전히 '만든 친구' 표시에만 씁니다).
+- 인물의 얼굴을 실제 사람처럼 그리려 하지 말고, 귀여운 캐릭터(한복·갓·왕관 등)나 그 인물을 나타내는 상징물로 표현합니다
+  (예: 세종대왕 👑+한글 자모, 장영실 ⏰ 물시계, 김정호 🗺️ 지도, 문익점 🌱 목화, 신사임당 🎨 풀벌레 그림, 김홍도 🖌️ 씨름, 김만덕 🍚 쌀가마, 정조 🏯 수원 화성, 김구 📜 백범일지와 태극기 그림, 최무선 🎆 불꽃).
+- 화약·무기·전쟁 이야기는 사실만 짧게 다루고, 사람을 해치는 장면은 그리지 않습니다.
+- 역사 사실은 정확해야 합니다. 문제 은행에 아이가 고친 문제나 보탠 문제 중 사실과 분명히 다르거나 정답이 둘 이상인 것이 있으면,
+  아이의 뜻을 살려 바르게 고쳐서 넣습니다. 확실하지 않은 이야기(전해지는 이야기)는 "~라는 이야기가 전해져요"처럼 씁니다.`;
+
+const QUIZ_QUESTION_SYSTEM = `당신은 초등학생과 함께 "역사 인물 퀴즈 게임"을 기획하는 다정한 게임 선생님입니다.
+${SAFETY}
+${QUIZ_SAFETY}
+
+이 화면에서 만드는 게임은 반드시 '인물 퀴즈 게임'입니다. 아이가 적은 컨셉·규칙과 인물 퀴즈 문제 은행을 보고 두 가지를 합니다.
+
+1) questions: 퀴즈 게임을 재미있게 만들기 위해 아직 정해지지 않은 것을 3~4개 묻습니다.
+   예: 퀴즈를 푸는 방식(징검다리·보물상자·타임머신 등 무대), 맞히면/틀리면 어떻게 되는지, 인물을 한 명씩 차례로 만날지 섞어서 낼지,
+   한 판에 몇 문제를 낼지, 시간 제한, 인물 카드 모으기 같은 보상. 이미 아이가 정한 것은 다시 묻지 않습니다.
+   게임이 퀴즈가 아닌 다른 게임이 되도록 하는 보기는 주지 않습니다. 아이가 다른 게임(달리기, 슈팅 등)을 적었다면
+   "달리다가 문을 만나면 퀴즈를 풀기"처럼 그 재미를 퀴즈와 섞는 방법을 묻습니다.
+   질문은 2학년이 읽을 수 있게 짧고 쉽게, 앞에 이모지 1개. 보기 3개(15자 이내, 이모지 앞에).
+2) checks: 문제 은행을 꼼꼼히 살펴서 사실과 다른 내용, 정답이 틀렸거나 둘 이상인 문제, 2학년에게 너무 어려운 낱말, 맞춤법이 틀린 곳을 찾아
+   어디(where: 예 "정조 3번")가 어떻게 바뀌면 좋을지(note: 한 문장, 2학년 말투)를 적습니다. 문제가 없으면 빈 배열. 최대 6개.
+summary에는 아이의 퀴즈 게임을 한두 문장으로 칭찬하며 요약합니다.`;
+
+const QUIZ_QUESTION_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["summary", "checks", "questions"],
+  properties: {
+    summary: { type: "string" },
+    checks: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["where", "note"],
+        properties: { where: { type: "string" }, note: { type: "string" } },
+      },
+    },
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["question", "choices"],
+        properties: {
+          question: { type: "string" },
+          choices: { type: "array", items: { type: "string" } },
+        },
+      },
+    },
+  },
+};
+
+const QUIZ_GAME_SYSTEM = `당신은 어린이를 위한 교육용 웹 게임을 만드는 실력 있는 게임 개발자입니다.
+${SAFETY}
+${QUIZ_SAFETY}
+
+아이가 기획한 "역사 인물 퀴즈 게임"을 HTML 파일 하나로, 아이가 "우와!" 할 만큼 예쁘고 신나게 완성합니다.
+${COMMON_RULES}
+
+[반드시 인물 퀴즈 게임]
+- 어떤 컨셉이든 게임의 중심은 문제 은행의 인물 퀴즈를 푸는 것입니다. 아이가 퀴즈가 아닌 게임을 적었더라도
+  그 재미(달리기, 모으기 등)는 살리되 퀴즈를 맞혀야 앞으로 나아가거나 점수를 얻도록 만듭니다. 퀴즈 없는 게임은 만들지 않습니다.
+- 문제 은행의 모든 문제를 JavaScript 배열 데이터로 빠짐없이 넣습니다 (인물 이름, 문제, 보기, 정답, 설명, 알아본 내용).
+  문제와 보기 문장은 바꾸지 말고 그대로 씁니다. 단, 사실과 분명히 다른 것은 바르게 고칩니다.
+- 보기 순서는 매번 섞되 정답이 올바르게 따라가게 합니다. O/X 문제는 보기 "O", "X"를 크고 둥근 ⭕ ❌ 버튼으로 보여 줍니다.
+- 한 판에 너무 길지 않게: 아이가 정하지 않았다면 한 판은 10문제 안팎으로 여러 인물에서 고르게 뽑고, "다시 하기"를 하면 다른 문제가 나오게 합니다.
+- 인물 고르기: 시작 화면이나 메뉴에서 "모든 인물" 또는 인물 한 명을 골라 그 인물 문제만 풀 수도 있게 합니다.
+- 맞히면 칭찬과 효과, 틀리면 정답을 알려 주고 설명(없으면 '알아본 내용' 중 관련 문장)을 말풍선으로 보여 준 뒤 다음으로 넘어갑니다.
+  아이가 다음 버튼을 눌러서 넘어가게 해 설명을 읽을 시간을 줍니다.
+- 인물마다 '알아본 내용'을 볼 수 있는 "인물 카드"(인물 상징 그림 + 이름 + 알아본 내용)를 넣습니다. 처음 만난 인물은 카드를 보여 주고, 끝 화면에서 모은 카드를 보여 줘도 좋습니다.
+- 문제 글자는 크게(최소 22px), 보기 버튼은 크게, 긴 문장은 줄바꿈되게 해서 휴대폰에서도 글자가 잘리지 않게 합니다.
+
+[재미와 완성도]
+- <canvas> 와 requestAnimationFrame 게임 루프(dt 반영)로 배경과 캐릭터를 부드럽게 움직이고, 퀴즈 창은 HTML 요소로 또렷하게 띄워도 됩니다.
+- 캐릭터와 배경은 canvas 도형·그라데이션·그림자로 정성껏 그립니다(그림이 있으면 그림 사용). 옛날 분위기(한옥, 기와, 한지 색감)를 살려도 좋습니다.
+- 맞히면 반짝이 파티클, 점수가 떠오르는 효과, 화면 살짝 흔들림 같은 손맛을 넣습니다.
+- Web Audio API로 짧은 효과음(정답, 오답, 승리)을 만듭니다(첫 터치 후 시작, 소리 끄기 버튼).
+- 코드는 깔끔하게 500~900줄 정도(문제 데이터 제외).`;
+
 const PATCH_RULES = `
 고쳐야 할 부분만 아래 형식의 블록으로 출력하세요. 다른 설명은 쓰지 마세요.
 
@@ -304,11 +446,12 @@ const QUESTION_SCHEMA = {
 };
 
 async function makeQuestions(mode: Mode, idea: Idea, images: Img[]) {
+  const quiz = cleanQuiz(idea).length > 0;
   const msg = await anthropic.beta.messages.create({
     model: CONF[mode].model,
-    max_tokens: 6000,
-    system: QUESTION_SYSTEM[mode],
-    output_config: { effort: "low", format: { type: "json_schema", schema: QUESTION_SCHEMA } },
+    max_tokens: quiz ? 10000 : 6000,
+    system: quiz ? QUIZ_QUESTION_SYSTEM : QUESTION_SYSTEM[mode],
+    output_config: { effort: "low", format: { type: "json_schema", schema: quiz ? QUIZ_QUESTION_SCHEMA : QUESTION_SCHEMA } },
     betas: ["server-side-fallback-2026-07-01"],
     // @ts-ignore: SDK 타입이 아직 "default" 문자열을 모를 수 있음
     fallbacks: "default",
@@ -322,6 +465,7 @@ async function makeQuestions(mode: Mode, idea: Idea, images: Img[]) {
     question: q.question,
     choices: (q.choices || []).slice(0, 3),
   }));
+  if (Array.isArray(data.checks)) data.checks = data.checks.slice(0, 6);
   return data;
 }
 
@@ -372,7 +516,8 @@ Deno.serve(async (req) => {
   const idea = (body.idea || {}) as Idea;
   const images = cleanImages(idea);
   const action = String(body.action || "");
-  const system = GAME_SYSTEM[mode];
+  // 인물 퀴즈 화면에서 온 요청이면 항상 인물 퀴즈 게임 프롬프트
+  const system = cleanQuiz(idea).length ? QUIZ_GAME_SYSTEM : GAME_SYSTEM[mode];
 
   try {
     switch (action) {

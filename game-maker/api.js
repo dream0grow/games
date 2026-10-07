@@ -190,6 +190,7 @@
       questions: project.questions || [],
       answers: project.answers || [],
       summary: project.summary || "",
+      checks: project.checks || [],
       mode: project.mode || "basic",
       rawHtml: ex.html
     };

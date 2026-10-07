@@ -7,21 +7,25 @@
 (function () {
   var MODE = document.body.dataset.mode === "pro" ? "pro" : "basic";
   var PRO = MODE === "pro";
-  var ROOT = PRO ? "../" : "";            // game-maker/ 기준 경로
+  // <body data-kind="quiz"> : 인물 퀴즈 전용 화면 (항상 인물 퀴즈 게임만 만듦)
+  var QUIZ = document.body.dataset.kind === "quiz" && !!window.PersonQuizEditor;
+  var ROOT = PRO || QUIZ ? "../" : "";    // game-maker/ 기준 경로
   var GM = window.GameMaker;
   GM.setMode(MODE);
 
   // ---------------- 화면 만들기 ----------------
   document.getElementById("app").innerHTML =
     '<div class="topbar">' +
-      '<a class="brand" href="./">' + (PRO ? "🚀 AI 게임 만들기 PRO" : "🤖 AI와 게임 만들기") + "</a>" +
+      '<a class="brand" href="./">' + (PRO ? "🚀 AI 게임 만들기 PRO" : QUIZ ? "🧑‍🏫 인물 퀴즈 만들기" : "🤖 AI와 게임 만들기") + "</a>" +
       '<nav class="nav">' +
-        '<a href="' + ROOT + './"' + (PRO ? "" : ' class="on"') + ">✏️ 만들기</a>" +
+        '<a href="' + ROOT + './"' + (PRO || QUIZ ? "" : ' class="on"') + ">✏️ 만들기</a>" +
+        '<a href="' + ROOT + 'quiz/"' + (QUIZ ? ' class="on"' : "") + ">🧑‍🏫 인물 퀴즈</a>" +
         '<a href="' + ROOT + 'pro/"' + (PRO ? ' class="on"' : "") + ">🚀 PRO</a>" +
         '<a href="' + ROOT + 'gallery.html">🎮 우리반 게임</a>' +
         '<a href="' + ROOT + '../">🌱 곶자왈 게임</a>' +
       "</nav>" +
     "</div>" +
+    (QUIZ ? '<div class="pro-banner quiz-banner">🧑‍🏫 여기서는 꼭 <b>인물 퀴즈 게임</b>을 만들어요! 우리반 친구들이 PPT로 조사한 내용으로 만든 문제가 들어 있어요. 문제를 고치거나 더 넣어서 나만의 퀴즈 게임을 만들어 봐요.</div>' : "") +
     (PRO ? '<div class="pro-banner">🚀 PRO는 더 똑똑한 AI(Opus)가 여러 단계·보스·아이템·배경 음악이 있는 큰 게임을 만들어요. 만드는 데 3~6분 걸려요.</div>' : "") +
     '<div class="steps">' +
       '<div class="s on" data-step="1">① 생각 적기</div>' +
@@ -41,9 +45,13 @@
       '<h2>💡 내 게임 아이디어를 적어 볼까?</h2>' +
       '<p class="hint">🎤 버튼을 누르고 말해도 글자로 바뀌어요.</p>' +
       field("author", "🙋 내 이름", "", '<input type="text" id="author" maxlength="20" placeholder="예: 김지호" autocomplete="off" />', false) +
-      field("title", "🏷️ 게임 이름", "", '<input type="text" id="title" maxlength="40" placeholder="예: 곶자왈 나비 구하기" autocomplete="off" />', true) +
-      field("concept", "🌈 어떤 게임이야?", "(주인공, 장소, 이야기)", '<textarea id="concept" maxlength="1200" placeholder="예: 곶자왈 숲에서 나비가 길을 잃었어요. 내가 나비가 되어 꽃을 찾아 날아가요."></textarea>', true) +
-      field("rules", "📏 게임 규칙", "(어떻게 하면 이기고, 어떻게 하면 져?)", '<textarea id="rules" maxlength="1200" placeholder="예: 꽃에 닿으면 1점! 새한테 닿으면 하트가 줄어요. 꽃 10개를 모으면 이겨요."></textarea>', true) +
+      field("title", "🏷️ 게임 이름", "", '<input type="text" id="title" maxlength="40" placeholder="' + (QUIZ ? "예: 역사 인물 퀴즈 탐험" : "예: 곶자왈 나비 구하기") + '" autocomplete="off" />', true) +
+      (QUIZ
+        ? '<div class="field"><label>🧑‍🏫 퀴즈에 넣을 인물과 문제 <span class="sub">(인물을 고르고, 이름을 눌러 문제를 고쳐요)</span></label><div id="quizEditor"></div></div>' +
+          field("concept", "🌈 어떤 퀴즈 게임이야?", "(주인공, 장소, 이야기)", '<textarea id="concept" maxlength="1200" placeholder="예: 내가 시간 여행자가 되어 옛날 인물들을 만나러 가요. 인물마다 문을 열려면 퀴즈를 맞혀야 해요."></textarea>', true) +
+          field("rules", "📏 퀴즈 규칙", "(맞히면? 틀리면? 언제 이겨?)", '<textarea id="rules" maxlength="1200" placeholder="예: 맞히면 별 1개! 틀리면 하트가 줄고 설명을 보여 줘요. 별 10개를 모으면 이겨요."></textarea>', true)
+        : field("concept", "🌈 어떤 게임이야?", "(주인공, 장소, 이야기)", '<textarea id="concept" maxlength="1200" placeholder="예: 곶자왈 숲에서 나비가 길을 잃었어요. 내가 나비가 되어 꽃을 찾아 날아가요."></textarea>', true) +
+          field("rules", "📏 게임 규칙", "(어떻게 하면 이기고, 어떻게 하면 져?)", '<textarea id="rules" maxlength="1200" placeholder="예: 꽃에 닿으면 1점! 새한테 닿으면 하트가 줄어요. 꽃 10개를 모으면 이겨요."></textarea>', true)) +
       '<div class="field"><label>🖼️ 그림 넣기 <span class="sub">(여러 장 넣을 수 있어요 · 종이 그림을 찍거나, 끌어다 놓거나, Ctrl+V로 붙여넣어도 돼요)</span></label>' +
         '<div class="imgs" id="imgs"></div>' +
         '<div class="genrow">' +
@@ -66,6 +74,7 @@
         '<div class="msg">AI가 네 게임을 읽고 있어요…</div><p class="hint">궁금한 걸 물어볼 거예요</p></div></div>' +
       '<div class="card hidden" id="qBox">' +
         '<div class="summary"><span class="bot">🤖</span><div id="summary"></div></div>' +
+        '<div id="checks" class="checks hidden"></div>' +
         '<p class="hint">더 멋진 게임을 만들려고 AI가 궁금한 게 있대요. 골라 주거나 직접 적어 줘!</p>' +
         '<div id="questions"></div>' +
         '<div id="err2" class="err hidden"></div>' +
@@ -159,11 +168,13 @@
       raw: "",           // 지금 게임 (그림은 "__IMG1__" 자리표시)
       history: [],       // 고치기 전 버전들
       galleryId: 0,      // 우리반 게임에 올린 번호 (있으면 '업데이트'로 같은 게임을 덮어씀)
-      reference: null    // 참고할 게임 {title, raw}
+      reference: null,   // 참고할 게임 {title, raw}
+      quiz: QUIZ ? PersonQuizEditor.defaults() : null,  // 인물 퀴즈 문제 (인물 퀴즈 화면에서만)
+      checks: []         // AI가 문제를 살펴보고 알려준 것 [{where, note}]
     };
   }
   var state = emptyState();
-  var DRAFT_KEY = "gm_draft_" + MODE;
+  var DRAFT_KEY = "gm_draft_" + (QUIZ ? "quiz" : MODE);
 
   // ---------------- 단계 이동 ----------------
   var current = 1;
@@ -181,7 +192,17 @@
   function flash(msg) { $("fileMsg").textContent = msg; setTimeout(function () { $("fileMsg").textContent = ""; }, 4000); }
 
   // ---------------- 예시 아이디어 ----------------
-  var EXAMPLES = PRO ? [
+  var EXAMPLES = QUIZ ? [
+    { label: "🐸 징검다리 퀴즈", title: "인물 퀴즈 징검다리",
+      concept: "개구리가 연못을 건너요. 돌마다 옛날 인물 퀴즈가 있어요.",
+      rules: "맞히면 다음 돌로 폴짝! 틀리면 물에 퐁당하고 설명을 본 뒤 다시 해요. 끝까지 건너면 이겨요." },
+    { label: "⏳ 시간 여행 퀴즈", title: "시간 여행 인물 퀴즈",
+      concept: "타임머신을 타고 옛날로 가서 인물들을 한 명씩 만나요. 인물을 만나면 그 사람에 대한 퀴즈가 나와요.",
+      rules: "인물마다 문제를 다 맞히면 그 인물 카드를 모아요. 모든 인물 카드를 모으면 이겨요. 틀리면 하트가 하나 줄어요." },
+    { label: "🎁 보물 상자 퀴즈", title: "인물 보물 상자 퀴즈",
+      concept: "보물섬에 상자가 잔뜩 있어요. 상자를 열면 인물 퀴즈가 나와요.",
+      rules: "맞히면 상자에서 금화가 나와요. 틀리면 상자가 잠겨요. 1분 동안 금화를 많이 모아요." }
+  ] : PRO ? [
     { label: "🦋 나비 대모험", title: "곶자왈 나비 대모험",
       concept: "곶자왈 숲의 나비가 사라진 꽃의 씨앗을 찾아 여행해요. 숲, 동굴, 용암 언덕, 하늘을 지나요.",
       rules: "꽃씨를 모으고 거미와 벌을 피해요. 단계마다 새로운 장소가 나오고 마지막엔 커다란 거미 대장을 이겨야 해요." },
@@ -216,10 +237,24 @@
   function readIdea() {
     var idea = {};
     FIELDS.forEach(function (k) { idea[k] = $(k).value.trim(); });
+    if (QUIZ) idea.quiz = state.quiz;
     return idea;
   }
   function writeIdea(idea) {
     FIELDS.forEach(function (k) { $(k).value = (idea && idea[k]) || ""; });
+    if (QUIZ) {
+      state.quiz = PersonQuizEditor.normalize(idea && idea.quiz);
+      if (quizEditor) quizEditor.render();
+    }
+  }
+
+  // 인물 퀴즈 문제 고치기
+  var quizEditor = null;
+  if (QUIZ) {
+    quizEditor = PersonQuizEditor.mount($("quizEditor"), {
+      get: function () { return state.quiz; },
+      onChange: function () { saveDraft(); }
+    });
   }
 
   // 새로고침해도 안 사라지게 이 기기에 임시 저장 (그림이 너무 크면 글만)
@@ -488,7 +523,10 @@
   $("toQuestions").onclick = async function () {
     var idea = readIdea();
     if (!idea.author) return showErr("err1", "🙋 내 이름을 적어 줘!");
-    if (!idea.concept && !idea.rules) return showErr("err1", "🌈 어떤 게임인지 조금만 적어 줘!");
+    if (QUIZ) {
+      var qErr = PersonQuizEditor.validate(state.quiz);
+      if (qErr) return showErr("err1", qErr);
+    } else if (!idea.concept && !idea.rules) return showErr("err1", "🌈 어떤 게임인지 조금만 적어 줘!");
     showErr("err1", "");
     state.idea = idea;
     go(2);
@@ -497,6 +535,7 @@
       var data = await withCode(function () { return GM.postJson("questions", { idea: apiIdea() }); });
       state.summary = data.summary || "";
       state.questions = data.questions || [];
+      state.checks = data.checks || [];
       state.answers = state.questions.map(function () { return ""; });
       renderQuestions();
     } catch (e) {
@@ -507,6 +546,7 @@
 
   function renderQuestions() {
     $("summary").textContent = state.summary;
+    renderChecks();
     var box = $("questions"); box.innerHTML = "";
     state.questions.forEach(function (q, qi) {
       var wrap = document.createElement("div"); wrap.className = "q";
@@ -536,6 +576,29 @@
     $("qLoading").classList.add("hidden"); $("qBox").classList.remove("hidden");
   }
 
+  // 인물 퀴즈: AI가 문제를 살펴보고 사실과 다르거나 헷갈리는 곳을 알려줌
+  function renderChecks() {
+    var box = $("checks");
+    var list = (state.checks || []).filter(function (c) { return c && c.note; });
+    box.classList.toggle("hidden", !list.length);
+    box.innerHTML = "";
+    if (!list.length) return;
+    var t = document.createElement("b");
+    t.textContent = "🔎 AI가 문제를 살펴봤어요";
+    box.appendChild(t);
+    var ul = document.createElement("ul");
+    list.forEach(function (c) {
+      var li = document.createElement("li");
+      li.textContent = (c.where ? c.where + " — " : "") + c.note;
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    var p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "⬅️ '다시 적기'를 눌러 직접 고쳐도 되고, 그냥 만들면 AI가 바르게 고쳐서 넣어요.";
+    box.appendChild(p);
+  }
+
   $("back1").onclick = function () { go(1); };
 
   // ---------------- ② → ③ 게임 만들기 ----------------
@@ -543,7 +606,7 @@
     ["🛠️", "AI가 게임을 만들고 있어요!"], ["🎨", "예쁜 색을 칠하는 중…"], ["🦋", "주인공을 그리는 중…"],
     ["📏", "네가 정한 규칙을 넣는 중…"], ["✨", "반짝이 효과를 넣는 중…"], ["🎵", "소리를 넣는 중…"], ["🧪", "잘 되는지 확인하는 중…"]
   ];
-  var EXPECTED = PRO ? 70000 : 26000;   // 대략적인 게임 코드 길이 (진행 막대용)
+  var EXPECTED = PRO ? 70000 : QUIZ ? 34000 : 26000;   // 대략적인 게임 코드 길이 (진행 막대용)
   var expected = EXPECTED;
 
   function setProgress(len, base) {
@@ -744,7 +807,7 @@
     return {
       mode: MODE, idea: idea,
       images: state.images.map(function (im) { return { dataUrl: im.dataUrl, note: im.note, removeBg: im.removeBg }; }),
-      summary: state.summary, questions: state.questions, answers: state.answers,
+      summary: state.summary, questions: state.questions, answers: state.answers, checks: state.checks,
       rawHtml: state.raw,
       galleryId: state.galleryId || 0
     };
@@ -767,13 +830,24 @@
   $("saveFileBtn").onclick = downloadProject;
   $("download").onclick = downloadProject;
 
+  // 인물 퀴즈 게임은 인물 퀴즈 화면에서, 다른 게임은 일반 화면에서 열기
+  var PENDING_KEY = "gm_pending_project";
+  function wrongPage(p) { return !!(p.idea && p.idea.quiz) !== QUIZ; }
+  function otherPage() { return QUIZ ? "../" : ROOT + "quiz/"; }
+
   function restore(p) {
+    if (wrongPage(p)) {
+      try { sessionStorage.setItem(PENDING_KEY, JSON.stringify(p)); } catch (e) {}
+      location.href = otherPage();
+      return;
+    }
     state = emptyState();
     state.idea = p.idea || {};
     state.images = (p.images || []).map(function (im) { return { dataUrl: im.dataUrl, orig: im.dataUrl, note: im.note || "", removeBg: !!im.removeBg }; });
     state.summary = p.summary || "";
     state.questions = p.questions || [];
     state.answers = p.answers || [];
+    state.checks = p.checks || [];
     state.galleryId = Number(p.galleryId) || 0;
     writeIdea(state.idea); renderImages(); saveDraft();
     if (p.rawHtml) { showGame(p.rawHtml); return; }
@@ -832,6 +906,12 @@
   // ?remix=번호 : 그 게임을 복사해서 내 새 게임으로
   var qs = new URLSearchParams(location.search);
   var editId = qs.get("edit"), remixId = qs.get("remix");
+  var pending = null;
+  try { pending = JSON.parse(sessionStorage.getItem(PENDING_KEY) || "null"); sessionStorage.removeItem(PENDING_KEY); } catch (e) {}
+  if (pending && !editId && !remixId) {
+    restore(pending);
+    flash(QUIZ ? "🧑‍🏫 인물 퀴즈 게임이라 인물 퀴즈 화면에서 열었어요." : "📂 일반 게임이라 만들기 화면에서 열었어요.");
+  }
   if (editId || remixId) {
     flash("게임을 불러오는 중… ⏳");
     GM.getGame(editId || remixId).then(function (g) {
@@ -839,6 +919,7 @@
       var p = GM.unpackProject(g.html);
       p.idea = Object.assign({ title: g.title, author: g.author, concept: g.concept, rules: g.rules }, p.idea || {});
       p.galleryId = editId ? g.id : 0;
+      if (wrongPage(p)) { location.replace(otherPage() + location.search); return; }
       restore(p);
       flash(editId
         ? "✏️ '" + g.title + "' 을(를) 수정하고 있어요. 다 고치면 '업데이트하기'를 눌러요."
