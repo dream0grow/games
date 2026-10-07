@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>🌿 스피드 곶자왈 퀴즈 게임 — 식물·나비·곤충 달리기</title>
 <style>
   :root{
@@ -17,9 +17,13 @@
     background:radial-gradient(120% 120% at 50% 0%, #d9f6e0 0%, #aee3bd 55%, #7fc993 100%);
     color:var(--ink); display:flex; align-items:center; justify-content:center;
     min-height:100%; overflow:hidden; user-select:none;
+    -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; touch-action:manipulation;
   }
+  input{user-select:text; -webkit-user-select:text;}
   #app{
     position:relative; width:min(96vw,920px); aspect-ratio:16/9;
+    /* 가로 폰(낮은 화면)에서도 16:9 유지 — 찌그러짐 방지 */
+    width:min(96vw, 920px, 170.6vh); width:min(96vw, 920px, 170.6dvh);
     max-height:96vh; border-radius:22px; overflow:hidden;
     box-shadow:0 18px 50px rgba(20,60,30,.35); background:#cfeede;
   }
@@ -30,7 +34,7 @@
     position:absolute; inset:0; display:flex; flex-direction:column;
     align-items:center; justify-content:safe center; text-align:center;
     padding:4% 6%; gap:12px; z-index:5; overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
+    -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
   }
   .screen>*{flex-shrink:0;}
   .hidden{display:none !important;}
@@ -56,7 +60,7 @@
   }
   .rules b{color:var(--gold);}
   input#name{
-    font-size:clamp(15px,3vw,18px); padding:10px 14px; border-radius:12px;
+    font-size:clamp(16px,3vw,18px); padding:10px 14px; border-radius:12px;
     border:none; text-align:center; width:min(70%,260px); font-family:inherit;
     outline:3px solid rgba(255,255,255,.4);
   }
@@ -150,10 +154,18 @@
 
   /* ---- 모바일(세로): 화면을 꽉 채우고 퀴즈 선택지가 잘리지 않게 ---- */
   @media (max-aspect-ratio: 1/1){
-    #app{ width:100vw; height:100dvh; max-height:none; aspect-ratio:auto; border-radius:0; }
-    canvas{ object-fit:contain; }
-    .screen{ justify-content:flex-start; padding-top:26px; padding-bottom:26px; overflow-y:auto; }
-    #quizBox{ top:54px; max-height:calc(100dvh - 64px); overflow-y:auto; }
+    #app{ width:100vw; height:100vh; height:100dvh; max-height:none; aspect-ratio:auto; border-radius:0; }
+    canvas{ object-fit:contain; object-position:50% 78%; }  /* 퀴즈 상자(위)와 겹치지 않게 게임 화면을 아래쪽에 */
+    .screen{ justify-content:flex-start; padding-top:calc(26px + env(safe-area-inset-top)); padding-bottom:calc(26px + env(safe-area-inset-bottom)); overflow-y:auto; }
+    #hud{ padding-top:calc(10px + env(safe-area-inset-top)); }
+    #quizBox{ top:calc(54px + env(safe-area-inset-top)); max-height:calc(100dvh - 64px - env(safe-area-inset-top)); overflow-y:auto; overscroll-behavior:contain; }
+  }
+  /* 가로 폰: 노치(좌우) 안전영역 */
+  @media (max-height:500px) and (min-aspect-ratio: 1/1){
+    #hud{ padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right)); }
+    #quizBox{ top:44px; max-height:calc(100% - 50px); overflow-y:auto; overscroll-behavior:contain; gap:6px; }
+    #question{ padding:8px 12px; }
+    .choice{ padding:10px 8px; }
   }
 </style>
 </head>
@@ -308,6 +320,21 @@ const hud=$("#hud"), quizBox=$("#quizBox");
 const livesEl=$("#lives"), progEl=$("#progress"), timerEl=$("#timer");
 const qBarFill=$("#qbarFill"), questionEl=$("#question"), choicesEl=$("#choices");
 const W=cv.width, H=cv.height, GROUND=H*0.78;
+// 고해상도 폰 화면에서 흐리지 않게: 게임 좌표는 W×H 그대로, 실제 픽셀만 키움
+let pxScale=1;
+function fitCanvas(){
+  const r=cv.getBoundingClientRect();
+  const cssW=Math.min(r.width, r.height*W/H) || W;   // object-fit:contain 으로 그려지는 실제 폭
+  const dpr=Math.min(window.devicePixelRatio||1, 3);
+  const bw=Math.round(Math.max(W, Math.min(2048, cssW*dpr)));
+  if(bw!==cv.width){ cv.width=bw; cv.height=Math.round(bw*H/W); }
+  pxScale=cv.width/W;
+}
+window.addEventListener("resize",fitCanvas);
+window.addEventListener("orientationchange",()=>setTimeout(fitCanvas,200));
+document.addEventListener("gesturestart",e=>e.preventDefault());
+document.addEventListener("contextmenu",e=>{ if(!e.target.closest("input")) e.preventDefault(); });
+fitCanvas();
 
 /* =========================================================
    게임 상태
@@ -793,6 +820,7 @@ function drawParticles(dt){
    ========================================================= */
 function loop(now){
   const dt=Math.min(50, now-last); last=now;
+  ctx.setTransform(pxScale,0,0,pxScale,0,0);
 
   if(charHop>0) charHop=Math.max(0,charHop-dt*0.004);
   if(hitFlash>0) hitFlash=Math.max(0,hitFlash-dt*0.004);

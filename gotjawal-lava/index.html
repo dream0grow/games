@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>곶자왈 용암에서 살아남기</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -11,33 +11,43 @@
     background: #1a1010;
     font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
     overflow: hidden;
-    user-select: none;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+    overscroll-behavior: none; touch-action: manipulation;
   }
+  input { user-select: text; -webkit-user-select: text; }
   #wrap {
-    position: relative; width: 100vw; height: 100vh;
+    position: relative; width: 100vw; height: 100vh; height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     display: flex; align-items: center; justify-content: center;
     background: radial-gradient(circle at 50% 30%, #3a1810, #120808);
   }
   #stage {
     position: relative;
-    width: min(100vw, 177.7vh);
+    /* 16:10 비율 유지(가로 폰에서 찌그러짐 방지) + 노치 안전영역 제외 */
+    width: min(100%, 160vh);
+    width: min(100%, calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 1.6));
     aspect-ratio: 16 / 10;
-    max-height: 100vh;
+    max-height: 100%;
     box-shadow: 0 0 60px rgba(255,90,20,0.25);
     border-radius: 12px; overflow: hidden; background: #000;
   }
-  canvas { display: block; width: 100%; height: 100%; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
   .overlay {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     text-align: center; padding: 4%; color: #fff; z-index: 10;
-    overflow-y: auto;
+    overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
   }
+  /* 내용이 넘쳐도 위쪽이 잘리지 않는 가운데 정렬 */
+  .overlay > :first-child { margin-top: auto; }
+  .overlay > :last-child { margin-bottom: auto; }
   /* 모바일(세로): 오버레이를 화면 전체로 펼치고 위에서부터 스크롤 → 제목·버튼 안 잘림 */
-  @media (max-aspect-ratio: 1/1){
-    .overlay{ position: fixed; justify-content: flex-start; padding-top: 20px; padding-bottom: 24px; }
+  @media (max-aspect-ratio: 1/1), (max-height: 500px){
+    .overlay{ position: fixed; justify-content: flex-start;
+      padding: calc(20px + env(safe-area-inset-top)) calc(4% + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(4% + env(safe-area-inset-left)); }
   }
   .hidden { display: none !important; }
 
@@ -49,7 +59,7 @@
   }
   .game-sub { font-size: clamp(13px, 2.2vw, 20px); color: #ffb27a; margin-bottom: 22px; }
   .title-name-row { display:flex; flex-direction:column; align-items:center; gap:4px; margin-bottom:16px; }
-  .title-name-row input { border:3px solid #ffcf6b; border-radius:12px; padding:11px 16px; font-size:clamp(15px,2.4vw,20px); width:min(82%,300px); text-align:center; font-weight:700; background:#fff; color:#3a2410; }
+  .title-name-row input { border:3px solid #ffcf6b; border-radius:12px; padding:11px 16px; font-size:clamp(16px,2.4vw,20px); width:min(82%,300px); text-align:center; font-weight:700; background:#fff; color:#3a2410; }
   .title-name-row input.warn { border-color:#ff5a3c; animation: shakeX .3s; }
   .name-msg { font-size:clamp(12px,2vw,15px); color:#ffd24a; font-weight:800; min-height:1.1em; }
   @keyframes shakeX { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
@@ -108,16 +118,23 @@
   .rank-medal { width:1.6em; display:inline-block; }
 
   /* 방향 버튼 */
-  #controls { position:absolute; left:0; right:0; bottom:14px; display:flex; justify-content:center; gap:14px; z-index:8; }
+  #controls { position:absolute; left:0; right:0; bottom:14px; display:flex; justify-content:center; gap:14px; z-index:8; touch-action:none; }
   .ctrl-btn {
     width: clamp(62px, 11vw, 92px); height: clamp(62px, 11vw, 92px);
     border-radius: 18px; border:none; cursor:pointer;
     background: rgba(255,180,60,0.82);
     box-shadow: 0 5px 0 rgba(170,90,0,0.85), 0 6px 14px rgba(0,0,0,0.3);
     font-size: clamp(26px, 5vw, 42px); color:#5a2a00; font-weight:900;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   }
   .ctrl-btn.up { width: clamp(78px, 14vw, 120px); background: rgba(120,210,90,0.9); box-shadow: 0 5px 0 rgba(45,120,30,0.9), 0 6px 14px rgba(0,0,0,0.3); }
   .ctrl-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(170,90,0,0.85); }
+  /* 세로 폰: 게임 화면이 낮으므로 버튼을 화면 아래(엄지 위치)로 빼서 크게 */
+  @media (max-aspect-ratio: 1/1){
+    #controls { position:fixed; bottom: calc(22px + env(safe-area-inset-bottom)); gap: 4vw; }
+    .ctrl-btn { width: 24vw; height: min(24vw, 104px); max-width: 110px; font-size: 9vw; }
+    .ctrl-btn.up { width: 30vw; max-width: 130px; }
+  }
 
   .toast {
     position:absolute; top:11%; left:50%; transform:translateX(-50%);
@@ -206,6 +223,18 @@
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
+  // 고해상도(폰 devicePixelRatio) 대응: 게임 좌표는 W×H 그대로, 실제 픽셀만 화면 크기에 맞춤
+  let pxScale = 1;
+  function fitCanvas() {
+    const cssW = canvas.clientWidth || W;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const bw = Math.round(Math.max(W, Math.min(2400, cssW * dpr)));
+    if (bw !== canvas.width) { canvas.width = bw; canvas.height = Math.round(bw * H / W); }
+    pxScale = canvas.width / W;
+  }
+  window.addEventListener("resize", fitCanvas);
+  window.addEventListener("orientationchange", () => setTimeout(fitCanvas, 200));
+  fitCanvas();
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -623,6 +652,7 @@
 
   // ---------- draw ----------
   function draw() {
+    ctx.setTransform(pxScale, 0, 0, pxScale, 0, 0);
     ctx.save();
     if (shake > 0) ctx.translate(rand(-1, 1) * shake * 14, rand(-1, 1) * shake * 14);
     drawScene();
@@ -939,15 +969,33 @@
     else if (e.key === "ArrowUp" || e.key === " " || e.key === "Spacebar") { e.preventDefault(); ascend(0); }
   });
 
-  document.getElementById("leftBtn").addEventListener("pointerdown", (e) => { e.preventDefault(); ascend(-1); });
-  document.getElementById("upBtn").addEventListener("pointerdown", (e) => { e.preventDefault(); ascend(0); });
-  document.getElementById("rightBtn").addEventListener("pointerdown", (e) => { e.preventDefault(); ascend(1); });
-  canvas.addEventListener("pointerdown", (e) => {
-    if (state !== "PLAYING") return;
+  // 버튼: 누르는 즉시 점프, 꾹 누르고 있으면 키보드처럼 계속 점프
+  function bindHold(id, dir) {
+    const el = document.getElementById(id);
+    let timer = null;
+    const stop = () => { clearTimeout(timer); timer = null; };
+    el.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); ascend(dir);
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      stop();
+      const rep = () => { ascend(dir); timer = setTimeout(rep, 90); };
+      timer = setTimeout(rep, 320);
+    });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach(t => el.addEventListener(t, stop));
+    el.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+  bindHold("leftBtn", -1); bindHold("upBtn", 0); bindHold("rightBtn", 1);
+  // 게임 화면(세로 폰에서는 위·아래 빈 곳 포함) 터치: 왼쪽/가운데/오른쪽 = ◀ ▲ ▶
+  document.getElementById("wrap").addEventListener("pointerdown", (e) => {
+    if (state !== "PLAYING" || e.target.closest("#controls, .overlay")) return;
+    if (e.target !== canvas && !matchMedia("(max-aspect-ratio: 1/1)").matches) return;
     const rect = canvas.getBoundingClientRect();
     const rx = (e.clientX - rect.left) / rect.width;
     ascend(rx < 0.34 ? -1 : rx > 0.66 ? 1 : 0);
   });
+  // 길게 누르기 메뉴·핀치 확대 막기
+  document.addEventListener("contextmenu", (e) => { if (!e.target.closest("input")) e.preventDefault(); });
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
 
   // 지난번에 쓴 이름을 미리 채워줌
   (() => {

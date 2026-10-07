@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>🦋 곶자왈 나비를 피해라 — 돌하르방 대모험</title>
 <style>
   :root{
@@ -17,21 +17,29 @@
     background:radial-gradient(120% 120% at 50% 0%, #11301f 0%, #0a1d12 60%, #050d08 100%);
     color:#eaf4ea; display:flex; align-items:center; justify-content:center;
     min-height:100%; overflow:hidden; user-select:none;
+    -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; touch-action:manipulation;
   }
+  input{user-select:text; -webkit-user-select:text;}
   #app{
     position:relative; width:min(96vw,920px); aspect-ratio:16/9;
+    /* 가로 폰(낮은 화면)에서도 16:9 유지 — 찌그러짐 방지 */
+    width:min(96vw, 920px, 170.6vh); width:min(96vw, 920px, 170.6dvh);
     max-height:96vh; border-radius:22px; overflow:hidden;
     box-shadow:0 18px 50px rgba(0,0,0,.6); background:#0c1c12;
-    touch-action:none;
   }
-  canvas{display:block; width:100%; height:100%;}
+  canvas{display:block; width:100%; height:100%; touch-action:none;}
 
   /* ---- 공통 화면 레이어 ---- */
   .screen{
     position:absolute; inset:0; display:flex; flex-direction:column;
     align-items:center; justify-content:center; text-align:center;
     padding:5% 6%; gap:14px; z-index:5;
+    overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y;
+    justify-content:flex-start;
   }
+  .screen>*{flex-shrink:0;}
+  /* 내용이 넘쳐도 위쪽이 잘리지 않는 가운데 정렬 */
+  .screen>:first-child{margin-top:auto;} .screen>:last-child{margin-bottom:auto;}
   .hidden{display:none !important;}
 
   #startScreen, #resultScreen{
@@ -47,7 +55,7 @@
   }
   .rules b{color:var(--gold);}
   input#name{
-    font-size:clamp(15px,3vw,18px); padding:10px 14px; border-radius:12px;
+    font-size:clamp(16px,3vw,18px); padding:10px 14px; border-radius:12px;
     border:none; text-align:center; width:min(70%,260px); font-family:inherit;
     outline:3px solid rgba(255,255,255,.3); color:#123;
   }
@@ -83,6 +91,7 @@
     width:min(94%,760px); z-index:8; display:flex; flex-direction:column; gap:12px;
     background:rgba(8,24,14,.86); border:2px solid rgba(123,227,139,.5);
     border-radius:18px; padding:18px 18px 20px; box-shadow:0 18px 50px rgba(0,0,0,.6);
+    max-height:calc(100% - 12px); overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y;
   }
   #quizTitle{font-size:clamp(14px,3vw,20px); font-weight:800; color:var(--gold);}
   #qbar{height:10px; border-radius:999px; background:rgba(255,255,255,.18); overflow:hidden;}
@@ -127,14 +136,25 @@
 
   /* ---- 모바일: 화면을 꽉 채우고 글자/버튼 잘림 방지 ---- */
   @media (max-aspect-ratio: 1/1){
-    #app{ width:100vw; height:100dvh; max-height:none; aspect-ratio:auto; border-radius:0; }
+    #app{ width:100vw; height:100vh; height:100dvh; max-height:none; aspect-ratio:auto; border-radius:0; }
     canvas{ object-fit:contain; }
-    .screen{ justify-content:flex-start; padding-top:26px; padding-bottom:26px; overflow-y:auto; }
+    .screen{ justify-content:flex-start; padding-top:calc(26px + env(safe-area-inset-top)); padding-bottom:calc(26px + env(safe-area-inset-bottom)); overflow-y:auto; }
+    #hud{ padding-top:calc(10px + env(safe-area-inset-top)); }
+  }
+  /* 가로 폰: 퀴즈 상자를 낮은 화면에 맞게 촘촘히 + 노치(좌우) 안전영역 */
+  @media (max-height:500px) and (min-aspect-ratio: 1/1){
+    #hud{ padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right)); }
+    #quizBox{ padding:10px 12px 12px; gap:6px; }
+    #question{ padding:8px 12px; }
+    .choice{ padding:10px 8px; }
   }
   /* ---- 모바일 방향 패드 (← ↑ → ↓) ---- */
-  #dpad{ position:fixed; left:14px; bottom:16px; z-index:9; display:none;
-    grid-template-columns:repeat(3,52px); grid-template-rows:repeat(3,52px); gap:6px; }
-  #dpad button{ border:none; border-radius:14px; background:rgba(255,255,255,.18); color:#fff;
+  #dpad{ position:fixed; left:calc(14px + env(safe-area-inset-left)); bottom:calc(16px + env(safe-area-inset-bottom)); z-index:7; display:none;  /* 퀴즈 상자(8) 아래 */
+    grid-template-columns:repeat(3,var(--pad,64px)); grid-template-rows:repeat(3,var(--pad,64px)); gap:6px;
+    touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  @media (max-height:500px){ #dpad{ --pad:min(54px, 16vh); } }   /* 가로 폰: 화면 높이에 맞춤 */
+  #dpad button.on{ background:rgba(255,255,255,.4); transform:translateY(2px); }
+  #dpad button{ touch-action:none; pointer-events:none; border:none; border-radius:14px; background:rgba(255,255,255,.18); color:#fff;
     font-size:24px; font-weight:900; box-shadow:0 3px 0 rgba(0,0,0,.3); user-select:none; -webkit-user-select:none; }
   #dpad button:active{ background:rgba(255,255,255,.36); transform:translateY(2px); }
   #dpadUp{grid-area:1/2} #dpadLeft{grid-area:2/1} #dpadRight{grid-area:2/3} #dpadDown{grid-area:3/2}
@@ -252,6 +272,19 @@ const hud=$("#hud"), quizBox=$("#quizBox");
 const livesEl=$("#lives"), birdsEl=$("#birds"), scoreEl=$("#score");
 const qBarFill=$("#qbarFill"), questionEl=$("#question"), choicesEl=$("#choices");
 const W=cv.width, H=cv.height;
+// 고해상도 폰 화면에서 흐리지 않게: 게임 좌표는 W×H 그대로, 실제 픽셀만 키움
+let pxScale=1;
+function fitCanvas(){
+  const r=cv.getBoundingClientRect();
+  const cssW=Math.min(r.width, r.height*W/H) || W;   // object-fit:contain 으로 그려지는 실제 폭
+  const dpr=Math.min(window.devicePixelRatio||1, 3);
+  const bw=Math.round(Math.max(W, Math.min(2048, cssW*dpr)));
+  if(bw!==cv.width){ cv.width=bw; cv.height=Math.round(bw*H/W); }
+  pxScale=cv.width/W;
+}
+window.addEventListener("resize",fitCanvas);
+window.addEventListener("orientationchange",()=>setTimeout(fitCanvas,200));
+fitCanvas();
 
 /* =========================================================
    게임 상태
@@ -794,6 +827,7 @@ function updateEntities(dt){
    ========================================================= */
 function loop(now){
   const dt=Math.min(50, now-last); last=now;
+  ctx.setTransform(pxScale,0,0,pxScale,0,0);
   if(invuln>0) invuln=Math.max(0,invuln-dt);
   if(hitFlash>0) hitFlash=Math.max(0,hitFlash-dt*0.004);
 
@@ -849,18 +883,31 @@ window.addEventListener("keydown",e=>{
 });
 window.addEventListener("keyup",e=>{ keys[e.key]=false; });
 
-/* 모바일 방향 패드 → 키보드 입력을 그대로 재사용 */
-function bindDir(id,key){
-  const el=document.getElementById(id); if(!el) return;
-  const on=e=>{ e.preventDefault(); keys[key]=true; };
-  const off=e=>{ e.preventDefault(); keys[key]=false; };
-  el.addEventListener("touchstart",on,{passive:false});
-  el.addEventListener("touchend",off,{passive:false});
-  el.addEventListener("touchcancel",off,{passive:false});
-  el.addEventListener("mousedown",on); el.addEventListener("mouseup",off); el.addEventListener("mouseleave",off);
+/* 모바일 방향 패드 → 키보드 입력을 그대로 재사용.
+   누르는 즉시 반응, 꾹 누르면 계속 이동, 손가락을 밀면 방향 전환(대각선 포함) */
+const dpadEl=document.getElementById("dpad");
+const DPAD=[["dpadUp","ArrowUp"],["dpadDown","ArrowDown"],["dpadLeft","ArrowLeft"],["dpadRight","ArrowRight"]];
+let dpadPtr=null;
+function dpadSet(e){
+  const r=dpadEl.getBoundingClientRect();
+  const dx=(e.clientX-(r.left+r.width/2))/(r.width/2), dy=(e.clientY-(r.top+r.height/2))/(r.height/2);
+  const dz=0.22;   // 가운데 작은 영역은 멈춤
+  const on={ArrowUp:dy<-dz && Math.abs(dy)>=Math.abs(dx)*0.45, ArrowDown:dy>dz && Math.abs(dy)>=Math.abs(dx)*0.45,
+            ArrowLeft:dx<-dz && Math.abs(dx)>=Math.abs(dy)*0.45, ArrowRight:dx>dz && Math.abs(dx)>=Math.abs(dy)*0.45};
+  DPAD.forEach(([id,k])=>{ keys[k]=on[k]; document.getElementById(id).classList.toggle("on",on[k]); });
 }
-bindDir("dpadUp","ArrowUp"); bindDir("dpadDown","ArrowDown");
-bindDir("dpadLeft","ArrowLeft"); bindDir("dpadRight","ArrowRight");
+function dpadClear(){ dpadPtr=null; DPAD.forEach(([id,k])=>{ keys[k]=false; document.getElementById(id).classList.remove("on"); }); }
+dpadEl.addEventListener("pointerdown",e=>{
+  e.preventDefault(); dpadPtr=e.pointerId;
+  try{ dpadEl.setPointerCapture(e.pointerId); }catch(_){}
+  if(!actx){try{actx=new(window.AudioContext||window.webkitAudioContext)();}catch(_){}}
+  dpadSet(e);
+});
+dpadEl.addEventListener("pointermove",e=>{ if(e.pointerId===dpadPtr) dpadSet(e); });
+["pointerup","pointercancel","lostpointercapture"].forEach(t=>dpadEl.addEventListener(t,e=>{ if(e.pointerId===dpadPtr) dpadClear(); }));
+dpadEl.addEventListener("contextmenu",e=>e.preventDefault());
+document.addEventListener("gesturestart",e=>e.preventDefault());
+document.addEventListener("contextmenu",e=>{ if(!e.target.closest("input")) e.preventDefault(); });
 
 /* 시작화면 이름 검증 */
 function nameOK(){
