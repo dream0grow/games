@@ -35,7 +35,8 @@ const PRO_MODEL = Deno.env.get("PRO_MODEL") || "claude-opus-5-5";
 const CLASS_CODE = (Deno.env.get("CLASS_CODE") || "").trim();
 const PRO_CODE = (Deno.env.get("PRO_CODE") || "").trim() || CLASS_CODE;
 
-const GEMINI_KEY = (Deno.env.get("GEMINI_API_KEY") || "").trim();
+// 대시보드에서 "API Gemini" 같은 이름으로 넣어도 찾아 씀
+const GEMINI_KEY = (Deno.env.get("GEMINI_API_KEY") || Deno.env.get("API Gemini") || Deno.env.get("API_GEMINI") || "").trim();
 const GEMINI_IMAGE_MODEL = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-nano-banana-2.1";
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
@@ -218,15 +219,23 @@ function streamText(mode: Mode, system: string, content: unknown, maxTokens?: nu
   const conf = CONF[mode];
   const encoder = new TextEncoder();
   let keepAlive: number | undefined;
+  let closed = false;
+  // deno-lint-ignore no-explicit-any
+  let aiStream: any = null;
   const body = new ReadableStream({
     async start(controller) {
+      // 아이가 창을 닫으면 더 보내지 않음
+      const send = (s: string) => {
+        if (closed) return;
+        try { controller.enqueue(encoder.encode(s)); } catch { closed = true; }
+      };
       let gotText = false;
       // AI가 생각하는 동안 연결이 끊기지 않게 공백을 조금씩 보냄 (브라우저에서 무시됨)
       keepAlive = setInterval(() => {
-        if (!gotText) controller.enqueue(encoder.encode(" "));
+        if (!gotText) send(" ");
       }, 8000);
       try {
-        const stream = anthropic.beta.messages.stream({
+        aiStream = anthropic.beta.messages.stream({
           model: conf.model,
           max_tokens: maxTokens || conf.maxTokens,
           system,
@@ -237,26 +246,32 @@ function streamText(mode: Mode, system: string, content: unknown, maxTokens?: nu
           // @ts-ignore: 그림 블록 포함
           messages: [{ role: "user", content }],
         });
-        for await (const event of stream) {
+        for await (const event of aiStream) {
           if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
             gotText = true;
-            controller.enqueue(encoder.encode(event.delta.text));
+            send(event.delta.text);
           }
         }
-        const final = await stream.finalMessage();
-        if (final.stop_reason === "refusal") {
-          controller.enqueue(encoder.encode("\n<!--AI_REFUSED-->"));
-        }
+        const final = await aiStream.finalMessage();
+        if (final.stop_reason === "refusal") send("\n<!--AI_REFUSED-->");
       } catch (err) {
-        console.error("stream error", err);
-        controller.enqueue(encoder.encode("\n<!--AI_ERROR-->"));
+        if (!closed) {
+          console.error("stream error", err);
+          send("\n<!--AI_ERROR-->");
+        }
       } finally {
         clearInterval(keepAlive);
-        controller.close();
+        if (!closed) {
+          closed = true;
+          try { controller.close(); } catch { /* 이미 닫힘 */ }
+        }
       }
     },
     cancel() {
+      // 창을 닫으면 AI 생성도 멈춰서 비용을 아낌
+      closed = true;
       clearInterval(keepAlive);
+      try { aiStream?.abort(); } catch { /* 무시 */ }
     },
   });
   return new Response(body, {
