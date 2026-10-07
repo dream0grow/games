@@ -21,7 +21,7 @@
 //   {action:"save", idea, html}                → JSON {id}
 //   {action:"check"}                           → JSON {ok:true} (교실 코드 확인용)
 //
-// idea.images: [{data: base64, media_type, note}] (최대 3장). 게임 코드에서는
+// idea.images: [{data: base64, media_type, note}] (최대 20장). 게임 코드에서는
 // "__IMG1__" 같은 자리표시 문자열로 쓰고, 브라우저가 실제 그림으로 바꿔 넣습니다.
 // =========================================================
 import Anthropic from "npm:@anthropic-ai/sdk";
@@ -66,7 +66,7 @@ function cleanImages(idea: Idea): Img[] {
   if (!Array.isArray(idea.images)) return [];
   return idea.images
     .filter((im) => im && IMG_TYPES.includes(im.media_type) && typeof im.data === "string" && im.data.length < 1_500_000)
-    .slice(0, 3)
+    .slice(0, 20)
     .map((im) => ({ data: im.data, media_type: im.media_type, note: clip(im.note, 80) }));
 }
 
@@ -141,7 +141,7 @@ const COMMON_RULES = `
 - 반드시 끝까지 완성해서 </html> 로 닫습니다.
 
 [아이가 넣은 그림]
-- 그림이 있으면 꼭 게임에 씁니다. 그림 주소는 문자열 "__IMG1__", "__IMG2__", "__IMG3__" 를 그대로 씁니다
+- 그림이 있으면 꼭 게임에 씁니다. 그림 주소는 그림 번호에 맞는 문자열 "__IMG1__", "__IMG2__", "__IMG3__" … 를 그대로 씁니다
   (예: const hero = new Image(); hero.src = "__IMG1__";  또는 <img src="__IMG1__">). 이 문자열은 나중에 실제 그림으로 바뀝니다.
 - 그림은 아이가 종이에 그린 그림을 찍은 사진일 수 있습니다. 비율을 지키며 알맞은 크기로 그리고, 움직일 때 살짝 기울이거나 통통 튀게 해서 살아 있는 느낌을 줍니다.
 - 그림이 다 불러와지기 전에도 게임이 멈추지 않게 합니다(onload 전에는 이모지나 도형으로 대신 그림).
