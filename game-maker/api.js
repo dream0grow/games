@@ -216,6 +216,8 @@
     if (code === "refused") return "AI가 이 게임은 만들기 어렵대요. 조금 더 순한 내용으로 바꿔 볼까요?";
     if (code === "gallery") return "게임 목록을 불러오지 못했어요. 잠시 뒤에 다시 해 보세요.";
     if (code === "too_big") return "그림이나 게임이 너무 커요. 그림을 하나 빼고 다시 해 보세요.";
+    if (code === "no_gemini") return "선생님: AI 그림 만들기를 쓰려면 Supabase 비밀값에 GEMINI_API_KEY를 넣어 주세요.";
+    if (code === "no_image" || code === "gemini_failed") return "AI가 이 그림은 그리기 어렵대요. 다르게 설명해 볼까요?";
     if (code === "bad_file") return "이 파일은 불러올 수 없어요. 여기서 저장한 .html 파일을 골라 주세요.";
     return "앗, 잠깐 문제가 생겼어요. 잠시 뒤에 다시 눌러 주세요.";
   }
