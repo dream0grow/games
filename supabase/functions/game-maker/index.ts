@@ -22,6 +22,10 @@
 //   {action:"continue", idea, partial}         → HTML 텍스트 스트림 (끊긴 뒤 이어지는 부분)
 //   {action:"save", idea, html, id?}           → JSON {id, updated} (id가 있으면 그 게임을 덮어쓰고 이전 버전은 숨긴 백업으로 보관)
 //   {action:"hide", id}                        → JSON {ok} (갤러리에서 숨기기)
+//   save 에 thumb(게임 화면 JPEG data URL)를 주면 갤러리 썸네일로 저장
+//   {action:"thumb", id, thumb}                → JSON {ok} (썸네일이 없는 게임에만 채움)
+//   {action:"review", id, stars, name, comment}→ JSON {ok} (별점 1~5 + 소감, 이름 꼭 필요)
+//   {action:"hide_review", reviewId}           → JSON {ok}
 //   revise/revise_full 에 reference(참고할 게임 코드)를 주면 그 게임의 그래픽·연출을 참고해서 고침
 //   {action:"image", prompt}                   → JSON {data, media_type} (Gemini 그림 만들기)
 //   {action:"check"}                           → JSON {ok:true, gemini} (교실 코드 확인용)
@@ -219,6 +223,8 @@ const COMMON_RULES = `
 - 끝 화면: 이겼을 때/졌을 때 응원 메시지, 점수, "다시 하기" 버튼.
 - 화면 크기에 맞게 늘어나고 줄어들게(태블릿·크롬북·휴대폰, 가로·세로 모두). 가로 스크롤이 생기지 않게. 고해상도 화면에서 흐리지 않게 devicePixelRatio 를 반영합니다.
 - 조작: 터치(탭/드래그)와 마우스를 꼭 지원하고, 키보드(방향키/스페이스)도 지원합니다. 터치용 화면 버튼이 필요하면 크게 넣습니다.
+- 휴대폰에서 자연스럽게: pointer 이벤트(pointerdown/move/up)를 쓰고 게임 화면(canvas)에는 touch-action:none 을 줘서 끌 때 페이지가 움직이지 않게 합니다.
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"> 를 넣고, 화면은 100dvh 를 꽉 채우며, 세로 화면이면 화면 버튼을 아래쪽 엄지 닿는 곳에 둡니다.
 - 퀴즈가 들어가면 문제는 2학년 수준으로 정확한 내용만 씁니다.`;
 
 const GAME_SYSTEM = {
@@ -328,8 +334,13 @@ ${COMMON_RULES}
 [반드시 인물 퀴즈 게임]
 - 어떤 컨셉이든 게임의 중심은 문제 은행의 인물 퀴즈를 푸는 것입니다. 아이가 퀴즈가 아닌 게임을 적었더라도
   그 재미(달리기, 모으기 등)는 살리되 퀴즈를 맞혀야 앞으로 나아가거나 점수를 얻도록 만듭니다. 퀴즈 없는 게임은 만들지 않습니다.
-- 문제 은행의 모든 문제를 JavaScript 배열 데이터로 빠짐없이 넣습니다 (인물 이름, 문제, 보기, 정답, 설명, 알아본 내용).
-  문제와 보기 문장은 바꾸지 말고 그대로 씁니다. 단, 사실과 분명히 다른 것은 바르게 고칩니다.
+- [아주 중요] 문제는 코드에 직접 적지 않습니다. 게임을 띄울 때 화면이 <head> 맨 앞에 지금 문제 은행을 넣어 줍니다:
+    window.PERSON_QUIZ_DATA = { people: [ { id, name, emoji, era, by, intro, facts: ["알아본 내용", ...],
+      questions: [ { q: "문제", c: ["보기1", "보기2", ...], a: 0 /* c 안의 정답 번호 */, e: "설명(빈 문자열일 수 있음)" } ] } ] }
+  게임은 시작할 때 이 데이터를 읽어서 모든 문제와 인물 카드를 만듭니다. 그래서 아이가 문제를 고치면 게임을 다시 만들지 않아도 바로 반영됩니다.
+  인물 수(1~10명), 인물마다 문제 수, 보기 수(2~4개, O/X 는 ["O","X"])는 언제든 바뀔 수 있으니 고정하지 말고 데이터에 맞춥니다.
+  window.PERSON_QUIZ_DATA 가 없을 때만 쓰는 예비 문제 3개만 코드에 넣어 둡니다 (문제 은행에서 골라서).
+  by 는 그 인물을 조사하고 문제를 낸 친구 이름입니다. 문제 창이나 인물 카드에 "📘 문제 낸 친구: OOO" 처럼 보여 줍니다.
 - 보기 순서는 매번 섞되 정답이 올바르게 따라가게 합니다. O/X 문제는 보기 "O", "X"를 크고 둥근 ⭕ ❌ 버튼으로 보여 줍니다.
 - 한 판에 너무 길지 않게: 아이가 정하지 않았다면 한 판은 10문제 안팎으로 여러 인물에서 고르게 뽑고, "다시 하기"를 하면 다른 문제가 나오게 합니다.
 - 인물 고르기: 시작 화면이나 메뉴에서 "모든 인물" 또는 인물 한 명을 골라 그 인물 문제만 풀 수도 있게 합니다.
@@ -337,6 +348,7 @@ ${COMMON_RULES}
   아이가 다음 버튼을 눌러서 넘어가게 해 설명을 읽을 시간을 줍니다.
 - 인물마다 '알아본 내용'을 볼 수 있는 "인물 카드"(인물 상징 그림 + 이름 + 알아본 내용)를 넣습니다. 처음 만난 인물은 카드를 보여 주고, 끝 화면에서 모은 카드를 보여 줘도 좋습니다.
 - 문제 글자는 크게(최소 22px), 보기 버튼은 크게, 긴 문장은 줄바꿈되게 해서 휴대폰에서도 글자가 잘리지 않게 합니다.
+- 휴대폰 세로 화면(360×640)에서도 화면을 꽉 채우고, 문제 창이 넘치면 그 안에서 스크롤되게 합니다.
 
 [재미와 완성도]
 - <canvas> 와 requestAnimationFrame 게임 루프(dt 반영)로 배경과 캐릭터를 부드럽게 움직이고, 퀴즈 창은 HTML 요소로 또렷하게 띄워도 됩니다.
@@ -496,6 +508,28 @@ async function makeImage(prompt: string) {
   throw Object.assign(new Error("no_image"), { code: "no_image" });
 }
 
+// ---------- 저장소 ----------
+function db() {
+  return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+}
+
+// 갤러리 썸네일: JPEG/PNG/WEBP data URL, 400KB 까지
+function cleanThumb(t: unknown) {
+  const s = String(t ?? "");
+  return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s) && s.length < 400_000 ? s : "";
+}
+
+// 선생님이 아직 thumb 칸을 안 만들었으면(ai_game_reviews.sql 실행 전) 썸네일 없이 저장
+// deno-lint-ignore no-explicit-any
+async function withoutThumbIfMissing(row: Record<string, unknown>, run: (r: Record<string, unknown>) => PromiseLike<any>) {
+  const res = await run(row);
+  if (res.error && "thumb" in row && /thumb/.test(String(res.error.message || ""))) {
+    const { thumb: _drop, ...rest } = row;
+    return await run(rest);
+  }
+  return res;
+}
+
 // ---------- 메인 ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -578,35 +612,64 @@ Deno.serve(async (req) => {
       case "save": {
         const html = String(body.html || "");
         if (!/<html/i.test(html) || html.length > 4_000_000) return json({ error: "bad_html" }, 400);
-        const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-        const row = {
+        const supabase = db();
+        const row: Record<string, unknown> = {
           title: clip(idea.title, 60) || "이름 없는 게임",
           author: clip(idea.author, 30) || "익명",
           concept: clip(idea.concept, 1500),
           rules: clip(idea.rules, 1500),
           html,
         };
+        const thumb = cleanThumb(body.thumb);
+        if (thumb) row.thumb = thumb;
         const id = Number(body.id) || 0;
         if (id) {
           // 업그레이드: 같은 게임을 덮어쓰고, 이전 버전은 숨긴 백업으로 남김 (선생님이 대시보드에서 되살릴 수 있음)
           const { data: old } = await supabase.from("ai_games").select("title,author,concept,rules,html").eq("id", id).maybeSingle();
           if (old) {
             await supabase.from("ai_games").insert({ ...old, title: clip(`[백업 #${id}] ${old.title}`, 80), hidden: true });
-            const { error } = await supabase.from("ai_games").update({ ...row, hidden: false }).eq("id", id);
+            const { error } = await withoutThumbIfMissing(row, (r) => supabase.from("ai_games").update({ ...r, hidden: false }).eq("id", id));
             if (error) throw error;
             return json({ id, updated: true });
           }
         }
-        const { data, error } = await supabase.from("ai_games").insert(row).select("id").single();
+        const { data, error } = await withoutThumbIfMissing(row, (r) => supabase.from("ai_games").insert(r).select("id").single());
         if (error) throw error;
-        return json({ id: data.id, updated: false });
+        return json({ id: (data as { id: number }).id, updated: false });
+      }
+
+      case "thumb": {
+        const id = Number(body.id) || 0;
+        const thumb = cleanThumb(body.thumb);
+        if (!id || !thumb) return json({ error: "bad_thumb" }, 400);
+        const { error } = await db().from("ai_games").update({ thumb }).eq("id", id).is("thumb", null);
+        if (error) throw error;
+        return json({ ok: true });
+      }
+
+      case "review": {
+        const id = Number(body.id) || 0;
+        const stars = Math.round(Number(body.stars) || 0);
+        const name = clip(body.name, 20);
+        const comment = clip(body.comment, 300);
+        if (!id || stars < 1 || stars > 5 || !name || !comment) return json({ error: "bad_review" }, 400);
+        const { error } = await db().from("ai_game_reviews").insert({ game_id: id, stars, name, comment });
+        if (error) throw error;
+        return json({ ok: true });
+      }
+
+      case "hide_review": {
+        const rid = Number(body.reviewId) || 0;
+        if (!rid) return json({ error: "bad_id" }, 400);
+        const { error } = await db().from("ai_game_reviews").update({ hidden: true }).eq("id", rid);
+        if (error) throw error;
+        return json({ ok: true });
       }
 
       case "hide": {
         const id = Number(body.id) || 0;
         if (!id) return json({ error: "bad_id" }, 400);
-        const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-        const { error } = await supabase.from("ai_games").update({ hidden: true }).eq("id", id);
+        const { error } = await db().from("ai_games").update({ hidden: true }).eq("id", id);
         if (error) throw error;
         return json({ ok: true });
       }

@@ -65,7 +65,9 @@
       '<p class="hint" style="margin-top:14px">어떻게 적을지 모르겠으면 눌러 봐요 👇</p>' +
       '<div class="chips" id="examples"></div>' +
       '<div id="err1" class="err hidden"></div>' +
-      '<div class="btns center"><button class="btn primary big" id="toQuestions">🤖 AI에게 보여주기</button></div>' +
+      '<div class="btns center"><button class="btn green big hidden" id="quickPlay">🎮 고친 문제로 바로 놀기</button>' +
+        '<button class="btn primary big" id="toQuestions">🤖 AI에게 보여주기</button></div>' +
+      (QUIZ ? '<p class="hint center hidden" id="quickHint">문제만 고쳤다면 🎮 바로 놀기를 눌러요. AI가 다시 만들지 않아도 게임에 바로 들어가요!</p>' : "") +
     "</div></section>" +
 
     // ② AI 질문
@@ -100,11 +102,12 @@
       '<div class="card">' +
         '<h2 id="playTitle">🎮 완성!</h2>' +
         '<p class="hint">게임 화면을 한 번 누르고 시작해요.</p>' +
-        '<div class="stage" style="margin-top:12px"><iframe id="frame" sandbox="allow-scripts" allow="fullscreen; autoplay" allowfullscreen title="만든 게임"></iframe></div>' +
+        '<div class="stage" style="margin-top:12px"><iframe id="frame" sandbox="allow-scripts" allow="fullscreen; autoplay" allowfullscreen title="만든 게임"></iframe>' +
+          '<button class="stage-exit" id="exitFull" aria-label="크게 보기 끝내기">✕ 나가기</button></div>' +
         '<div class="btns"><button class="btn" id="fullscreen">⛶ 크게 보기</button>' +
         '<button class="btn" id="replay">🔁 처음부터</button>' +
         '<button class="btn hidden" id="undo">↩️ 전으로 되돌리기</button>' +
-        '<button class="btn" id="editIdea">✏️ 아이디어·그림 바꾸기</button></div>' +
+        '<button class="btn" id="editIdea">' + (QUIZ ? "✏️ 문제·아이디어 바꾸기" : "✏️ 아이디어·그림 바꾸기") + '</button></div>' +
       "</div>" +
       '<div class="card">' +
         '<h2>🔧 고치고 싶은 게 있어?</h2>' +
@@ -668,7 +671,8 @@
   $("back2").onclick = function () { go(state.raw ? 4 : 2); };
 
   // ---------------- ④ 놀기 ----------------
-  function playable() { return GM.fillImages(state.raw, state.images); }
+  // 인물 퀴즈는 지금 고친 문제를 게임에 넣어서 보여줌 (AI로 다시 만들 필요 없음)
+  function playable() { return GM.prepareGame(GM.fillImages(state.raw, state.images), QUIZ ? state.quiz : null); }
   function showGame(raw) {
     state.raw = raw;
     $("playTitle").textContent = (PRO ? "🚀 " : "🎮 ") + (state.idea.title || "내 게임");
@@ -685,10 +689,21 @@
     $("saveNew").classList.toggle("hidden", !state.galleryId);
   }
   $("replay").onclick = function () { $("frame").srcdoc = playable(); };
+  // 크게 보기: 휴대폰(아이폰 포함)에서도 화면 가득, 되면 진짜 전체 화면
+  var stageEl = $("frame").parentNode;
+  function exitFull() {
+    stageEl.classList.remove("full");
+    document.documentElement.classList.remove("noscroll");
+    if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  }
   $("fullscreen").onclick = function () {
-    var f = $("frame");
-    (f.requestFullscreen || f.webkitRequestFullscreen || function () {}).call(f);
+    stageEl.classList.add("full");
+    document.documentElement.classList.add("noscroll");
+    var req = stageEl.requestFullscreen || stageEl.webkitRequestFullscreen;
+    if (req) { try { var pr = req.call(stageEl); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {} }
   };
+  $("exitFull").onclick = exitFull;
+  document.addEventListener("fullscreenchange", function () { if (!document.fullscreenElement) { stageEl.classList.remove("full"); document.documentElement.classList.remove("noscroll"); } });
   $("undo").onclick = function () {
     if (!state.history.length) return;
     state.raw = state.history.pop();
@@ -696,7 +711,23 @@
     $("undo").classList.toggle("hidden", state.history.length === 0);
   };
   // 아이디어나 그림을 바꾼 뒤 다시 만들 수 있게 ①로
-  $("editIdea").onclick = function () { writeIdea(state.idea); renderImages(); go(1); };
+  $("editIdea").onclick = function () { writeIdea(state.idea); renderImages(); go(1); updateQuick(); };
+
+  // 인물 퀴즈: 게임이 이미 있으면 문제만 고쳐서 바로 놀기
+  function updateQuick() {
+    var show = QUIZ && !!state.raw;
+    $("quickPlay").classList.toggle("hidden", !show);
+    if ($("quickHint")) $("quickHint").classList.toggle("hidden", !show);
+  }
+  $("quickPlay").onclick = function () {
+    var qErr = PersonQuizEditor.validate(state.quiz);
+    if (qErr) return showErr("err1", qErr);
+    showErr("err1", "");
+    var idea = readIdea();
+    state.idea = Object.assign({}, state.idea, idea);
+    showGame(state.raw);
+    flash("🎮 고친 문제를 게임에 넣었어요!");
+  };
 
   // ---------------- 참고할 게임 ----------------
   function setReference(title, html) {
@@ -850,6 +881,7 @@
     state.checks = p.checks || [];
     state.galleryId = Number(p.galleryId) || 0;
     writeIdea(state.idea); renderImages(); saveDraft();
+    updateQuick();
     if (p.rawHtml) { showGame(p.rawHtml); return; }
     if (state.questions.length) { go(2); renderQuestions(); return; }
     go(1);
@@ -872,10 +904,15 @@
 
   async function saveToGallery(asNew) {
     $("save").disabled = true; $("saveNew").disabled = true;
+    var el0 = $("saveMsg");
     try {
       var id = asNew ? 0 : state.galleryId;
       var p = project(); p.galleryId = id;
-      var r = await withCode(function () { return GM.postJson("save", { idea: state.idea, html: GM.packProject(p), id: id }); });
+      // 갤러리 썸네일: 게임 화면을 한 장 찍음
+      el0.className = "hint"; el0.textContent = "📸 게임 화면을 찍는 중… (몇 초 걸려요)";
+      var thumb = await GM.captureThumb(playable());
+      el0.textContent = "🌟 올리는 중…";
+      var r = await withCode(function () { return GM.postJson("save", { idea: state.idea, html: GM.packProject(p), id: id, thumb: thumb }); });
       state.galleryId = r.id;   // 다음부터는 같은 게임을 업데이트
       updateSaveButtons();
       var el = $("saveMsg");
@@ -897,7 +934,7 @@
   $("newGame").onclick = function () {
     state = emptyState();
     writeIdea({ author: $("author").value });
-    renderImages(); saveDraft();
+    renderImages(); saveDraft(); updateQuick();
     go(1);
   };
 

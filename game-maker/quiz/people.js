@@ -6,6 +6,7 @@
    틀린 내용은 바로잡고 모자란 문제는 보충했습니다. 세종대왕은 PPT가 없어
    선생님 자료로 채웠습니다.
 
+   by : 그 인물 PPT를 만들고 문제를 낸 친구 (세종대왕은 PPT가 없어 선생님)
    src: "ppt"  = 친구 PPT 문제 그대로
         "fix"  = 친구 PPT 문제를 고친 것 (note 에 고친 까닭)
         "add"  = 새로 보충한 문제
@@ -14,7 +15,7 @@
    ========================================================= */
 window.PERSON_QUIZ = [
   {
-    id: "sejong", name: "세종대왕", emoji: "👑", era: "조선", ppt: false,
+    id: "sejong", by: "선생님", name: "세종대왕", emoji: "👑", era: "조선", ppt: false,
     intro: "백성을 위해 한글을 만든 조선의 임금",
     facts: [
       "조선의 네 번째 임금이에요.",
@@ -34,7 +35,7 @@ window.PERSON_QUIZ = [
     ]
   },
   {
-    id: "jeongjo", name: "정조", emoji: "🏯", era: "조선", ppt: true,
+    id: "jeongjo", by: "유승명", name: "정조", emoji: "🏯", era: "조선", ppt: true,
     intro: "백성의 억울한 이야기를 들어준 조선의 임금",
     facts: [
       "조선의 22번째 임금이에요.",
@@ -57,7 +58,7 @@ window.PERSON_QUIZ = [
     ]
   },
   {
-    id: "jangyeongsil", name: "장영실", emoji: "⏰", era: "조선", ppt: true,
+    id: "jangyeongsil", by: "황한솔", name: "장영실", emoji: "⏰", era: "조선", ppt: true,
     intro: "스스로 울리는 물시계 자격루를 만든 과학자",
     facts: [
       "조선 세종대왕 때의 과학자예요.",
@@ -78,7 +79,7 @@ window.PERSON_QUIZ = [
     ]
   },
   {
-    id: "choimuseon", name: "최무선", emoji: "🎆", era: "고려", ppt: true,
+    id: "choimuseon", by: "정민석", name: "최무선", emoji: "🎆", era: "고려", ppt: true,
     intro: "우리나라에서 처음 화약을 만든 고려의 과학자",
     facts: [
       "고려 말의 과학자이자 장군이에요.",
@@ -99,7 +100,7 @@ window.PERSON_QUIZ = [
     ]
   },
   {
-    id: "muniksjeom", name: "문익점", emoji: "🌱", era: "고려", ppt: true,
+    id: "muniksjeom", by: "강소현", name: "문익점", emoji: "🌱", era: "고려", ppt: true,
     intro: "목화씨를 가져와 따뜻한 솜옷을 입게 해 준 사람",
     facts: [
       "고려 말 사람이에요.",
@@ -119,7 +120,7 @@ window.PERSON_QUIZ = [
     ]
   },
   {
-    id: "kimmandeok", name: "김만덕", emoji: "🍚", era: "조선", ppt: true,
+    id: "kimmandeok", by: "김민재", name: "김만덕", emoji: "🍚", era: "조선", ppt: true,
     intro: "굶주린 제주 백성에게 쌀을 나눈 제주의 상인",
     facts: [
       "조선 시대 제주도에서 태어난 여성이에요.",
@@ -138,7 +139,7 @@ window.PERSON_QUIZ = [
     ]
   },
   {
-    id: "kimhongdo", name: "김홍도", emoji: "🖌️", era: "조선", ppt: true,
+    id: "kimhongdo", by: "양현서", name: "김홍도", emoji: "🖌️", era: "조선", ppt: true,
     intro: "사람들의 생활 모습을 그린 조선의 화가",
     facts: [
       "조선 시대의 화가로 1745년에 태어났어요. 호는 '단원'이에요.",
@@ -159,7 +160,7 @@ window.PERSON_QUIZ = [
     ]
   },
   {
-    id: "saimdang", name: "신사임당", emoji: "🎨", era: "조선", ppt: true,
+    id: "saimdang", by: "문라희", name: "신사임당", emoji: "🎨", era: "조선", ppt: true,
     intro: "풀과 벌레를 진짜처럼 그린 조선의 화가",
     facts: [
       "조선 시대의 화가이자 시인이에요. 글씨도 잘 썼어요.",
@@ -181,7 +182,7 @@ window.PERSON_QUIZ = [
     ]
   },
   {
-    id: "kimjeongho", name: "김정호", emoji: "🗺️", era: "조선", ppt: true,
+    id: "kimjeongho", by: "김소미", name: "김정호", emoji: "🗺️", era: "조선", ppt: true,
     intro: "대동여지도를 만든 조선의 지도 박사",
     facts: [
       "조선 시대에 지도를 만든 사람이에요.",
@@ -201,7 +202,7 @@ window.PERSON_QUIZ = [
     ]
   },
   {
-    id: "kimgu", name: "김구", emoji: "📜", era: "근대", ppt: true,
+    id: "kimgu", by: "정민호", name: "김구", emoji: "📜", era: "근대", ppt: true,
     intro: "나라를 되찾으려고 평생 애쓴 독립운동가",
     facts: [
       "우리나라의 독립을 위해 평생 애쓴 독립운동가예요. 호는 '백범'이에요.",

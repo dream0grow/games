@@ -37,6 +37,8 @@
 
 <script src="../supabase-config.js"></script>
 <script src="api.js?v=202610071400"></script>
+<script src="quiz/people.js?v=202610071400"></script>
+<script src="quiz/data.js?v=202610071400"></script>
 <script>
 (async function () {
   var GM = window.GameMaker;
@@ -57,8 +59,38 @@
 
   function alertBox(msg) { var el = document.getElementById("err"); el.textContent = msg; el.classList.remove("hidden"); }
 
+  // 썸네일이 없는 게임은 실제 게임 화면을 하나씩 찍어서 보여 줌
+  // (교실 코드가 있는 기기라면 서버에도 저장해서 다음부터는 바로 보임)
+  var shotQueue = [], shooting = false;
+  function setShot(thumb, src) {
+    thumb.className = "thumb shot";
+    thumb.innerHTML = "";
+    var img = document.createElement("img"); img.src = src; img.alt = "게임 화면"; img.loading = "lazy";
+    thumb.appendChild(img);
+  }
+  async function runShots() {
+    if (shooting) return;
+    shooting = true;
+    while (shotQueue.length) {
+      var job = shotQueue.shift();
+      try {
+        var full = await GM.getGame(job.id);
+        if (!full) continue;
+        var pj = GM.unpackProject(full.html);
+        var shot = await GM.captureThumb(GM.prepareGame(full.html, pj.idea && pj.idea.quiz));
+        var tag = job.thumb.querySelector(".shooting");
+        if (shot) {
+          setShot(job.thumb, shot);
+          if (GM.getCode()) GM.postJson("thumb", { id: job.id, thumb: shot }).catch(function () {});
+        } else if (tag) tag.remove();
+      } catch (e) {}
+    }
+    shooting = false;
+  }
+
   try {
     var games = await GM.listGames();
+    var ratings = await GM.ratingSummary().catch(function () { return {}; });
     document.getElementById("loading").classList.add("hidden");
     if (!games.length) { document.getElementById("empty").classList.remove("hidden"); return; }
     var grid = document.getElementById("grid");
@@ -68,15 +100,37 @@
       a.className = "gcard"; a.href = "play.html?id=" + encodeURIComponent(g.id);
       var thumb = document.createElement("div");
       thumb.className = "thumb";
-      thumb.style.background = pick(COLORS, g.title + g.id);
-      thumb.textContent = firstEmoji(g.title) || pick(EMOJIS, g.title);
+      if (g.thumb) {
+        setShot(thumb, g.thumb);
+      } else {
+        // 화면을 찍기 전까지 잠깐 보여 줄 자리
+        thumb.className = "thumb shot";
+        thumb.style.background = pick(COLORS, g.title + g.id);
+        var ph = document.createElement("div");
+        ph.style.cssText = "height:100%;display:flex;align-items:center;justify-content:center;font-size:52px";
+        ph.textContent = firstEmoji(g.title) || pick(EMOJIS, g.title);
+        var sh = document.createElement("div"); sh.className = "shooting"; sh.textContent = "📸 게임 화면 찍는 중…";
+        thumb.appendChild(ph); thumb.appendChild(sh);
+        shotQueue.push({ id: g.id, thumb: thumb });
+      }
       var body = document.createElement("div"); body.className = "body";
       var h = document.createElement("h3"); h.textContent = g.title;
       var by = document.createElement("div"); by.className = "by"; by.textContent = "만든 친구: " + g.author;
       var p = document.createElement("p"); p.textContent = g.concept || "";
       var dt = document.createElement("div"); dt.className = "date";
       dt.textContent = new Date(g.created_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
-      body.appendChild(h); body.appendChild(by); body.appendChild(p); body.appendChild(dt);
+      body.appendChild(h); body.appendChild(by);
+      var rt = ratings[g.id];
+      if (rt && rt.count) {
+        var rate = document.createElement("div"); rate.className = "rate";
+        var avg = rt.sum / rt.count;
+        var st = document.createElement("span"); st.className = "stars-ro";
+        st.textContent = "★★★★★".slice(0, Math.round(avg)) + "☆☆☆☆☆".slice(0, 5 - Math.round(avg));
+        rate.appendChild(st);
+        rate.appendChild(document.createTextNode(" " + avg.toFixed(1) + " · 소감 " + rt.count));
+        body.appendChild(rate);
+      }
+      body.appendChild(p); body.appendChild(dt);
       a.appendChild(thumb); a.appendChild(body);
       // 선생님·친구가 교실 코드로 고치거나 숨길 수 있어요
       var act = document.createElement("div"); act.className = "gact";
@@ -92,6 +146,7 @@
       card.appendChild(a); card.appendChild(act);
       grid.appendChild(card);
     });
+    runShots();
   } catch (e) {
     document.getElementById("loading").classList.add("hidden");
     var el = document.getElementById("err"); el.textContent = GM.friendlyError(e); el.classList.remove("hidden");

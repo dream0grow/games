@@ -42,10 +42,18 @@ npx supabase functions deploy game-maker --project-ref lanootakxybeshnsrnyu
 ## 인물 퀴즈 만들기 (`game-maker/quiz/`)
 - 이 화면에서는 **반드시 인물 퀴즈 게임**만 만들어져요. 아이가 다른 게임 아이디어를 적어도 서버가 인물 퀴즈 전용 규칙으로 만들어요.
 - 기본 문제는 `game-maker/quiz/people.js` 에 있어요 (인물 10명 · 65문제). 우리반 인물 PPT 9개의 '알아봅시다' 내용과 퀴즈를 바탕으로,
-  틀린 내용은 바로잡고(🔧) 모자란 문제는 보충(➕)했어요. 세종대왕은 PPT가 없어서 선생님 자료로 채웠어요.
-- 아이들은 화면에서 인물을 고르고, 문제·보기·정답·설명을 고치거나 새 문제(고르기 / O·X)를 넣을 수 있어요. ↺ 버튼으로 기본 문제로 되돌릴 수 있어요.
+  틀린 내용은 바로잡고(🔧) 모자란 문제는 보충(➕)했어요. 인물마다 PPT를 만든 친구 이름(`by`)이 들어 있어요. 세종대왕은 PPT가 없어서 선생님 자료로 채웠어요.
+- **퀴즈가 게임에 자동으로 들어가요.** 인물 퀴즈 게임은 문제를 코드에 적지 않고, 게임을 띄울 때마다 지금 문제(`window.PERSON_QUIZ_DATA`)를 넣어 줘요.
+  - 아이가 문제를 고치면 🎮 **고친 문제로 바로 놀기** 로 AI 없이 바로 반영돼요.
+  - 아이가 고치지 않은 인물은 언제나 `people.js` 의 최신 문제를 써요. 선생님이 `people.js` 를 고치면 이미 올린 게임에도 자동으로 반영돼요.
 - ② AI 질문 단계에서 AI가 문제를 훑어보고 사실과 다르거나 어려운 곳을 🔎 로 알려 줘요.
-- 기본 문제를 바꾸고 싶으면 `people.js` 를 고치면 돼요. 이 화면은 기존 서버 함수를 쓰므로, 처음 한 번 서버 함수를 다시 올려야(아래 3번의 `functions deploy`) 퀴즈 규칙이 적용돼요.
+
+## 우리반 게임: 썸네일 · 별점 · 소감
+Supabase 대시보드 → **SQL Editor** → `supabase/ai_game_reviews.sql` 내용을 붙여넣고 **Run** (처음 한 번).
+- **썸네일**: 게임을 올릴 때 실제 게임 화면을 찍어서 갤러리 썸네일로 써요. 썸네일이 없는 예전 게임은 교실 코드가 있는 기기에서 갤러리를 한 번 열면 자동으로 찍어서 채워요.
+- **별점·소감**: 친구 게임 화면 아래에서 별(1~5)을 고르면 별점에 맞는 질문이 나오고, **이름(꼭 필요)** 과 소감을 남길 수 있어요. 갤러리 카드에 평균 별점이 보여요.
+  남기려면 교실 코드가 필요해요. 이상한 소감은 🙈 (교실 코드) 또는 Table Editor → `ai_game_reviews` 에서 `hidden` 을 `true` 로.
+- **휴대폰**: 게임 화면에 ▶ 화면 가득 크게 놀기 버튼이 있고, 게임 안에서 확대·화면 끌림·길게 누르기 메뉴가 생기지 않게 맞춰 줘요.
 
 ## 4. 확인
 `https://dream0grow.github.io/games/game-maker/` 접속 → 예시 아이디어 하나 눌러서 끝까지 만들어 보세요.
@@ -63,9 +71,10 @@ npx supabase functions deploy game-maker --project-ref lanootakxybeshnsrnyu
 | 파일 | 역할 |
 |------|------|
 | `game-maker/index.html` | 아이들이 게임을 만드는 화면 (생각 적기 → AI 질문 → 만들기 → 놀기·고치기·올리기) |
-| `game-maker/quiz/` | 인물 퀴즈 게임 만들기 (`people.js` 기본 문제 · `editor.js` 문제 고치기 화면) |
+| `game-maker/quiz/` | 인물 퀴즈 게임 만들기 (`people.js` 기본 문제 · `editor.js` 문제 고치기 화면 · `data.js` 게임에 문제 넣기) |
 | `game-maker/gallery.html` | 우리반 게임 목록 |
 | `game-maker/play.html?id=N` | 친구 게임 하기 |
 | `game-maker/api.js`, `style.css` | 공용 코드·스타일 |
 | `supabase/functions/game-maker/index.ts` | AI를 부르는 서버 함수 (API 키는 여기에만) |
 | `supabase/ai_games.sql` | 게임 저장 테이블 |
+| `supabase/ai_game_reviews.sql` | 썸네일 칸 + 별점·소감 테이블 |

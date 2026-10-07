@@ -22,7 +22,8 @@
     var out = { selected: Array.isArray(quiz.selected) ? quiz.selected.slice() : [], people: [] };
     BASE.forEach(function (b) {
       var p = quiz.people.filter(function (x) { return x && x.id === b.id; })[0];
-      p = p ? Object.assign(clone(b), p) : clone(b);
+      // 고친 인물만 저장된 문제를 쓰고, 안 고친 인물은 언제나 최신 기본 문제
+      p = p && p.edited ? Object.assign(clone(b), p) : clone(b);
       p.facts = Array.isArray(p.facts) ? p.facts : [];
       p.questions = Array.isArray(p.questions) ? p.questions : [];
       out.people.push(p);
@@ -64,7 +65,11 @@
     var openId = null;
 
     function quiz() { return opts.get(); }
-    function changed() { opts.onChange && opts.onChange(); }
+    // p 를 주면 그 인물을 '고침'으로 표시
+    function changed(p) {
+      if (p) p.edited = true;
+      opts.onChange && opts.onChange();
+    }
 
     function render() {
       var Q = quiz();
@@ -121,7 +126,8 @@
       });
       var s = el("summary");
       s.appendChild(el("span", "qzname", p.emoji + " " + p.name));
-      s.appendChild(el("span", "qzsub", (p.intro || "") + " · 문제 " + p.questions.filter(function (q) { return filled(q.q); }).length + "개" + (p.ppt ? " · 📘 친구 PPT" : "")));
+      s.appendChild(el("span", "qzsub", (p.intro || "") + " · 문제 " + p.questions.filter(function (q) { return filled(q.q); }).length + "개" +
+        (p.by ? (p.ppt ? " · 📘 " + p.by + " PPT" : " · " + p.by) : "") + (p.edited ? " · ✏️ 고침" : "")));
       d.appendChild(s);
 
       var body = el("div", "qzbody");
@@ -134,7 +140,7 @@
       fa.maxLength = 1500;
       fa.oninput = function () {
         p.facts = fa.value.split("\n").map(function (x) { return x.trim(); }).filter(Boolean);
-        changed();
+        changed(p);
       };
       body.appendChild(fl); body.appendChild(fa);
 
@@ -154,7 +160,7 @@
       reset.onclick = function () {
         if (reset.dataset.sure !== "1") { reset.dataset.sure = "1"; reset.textContent = "정말 되돌릴까? 한 번 더 눌러 줘"; return; }
         var b = clone(basePerson(p.id));
-        p.facts = b.facts; p.questions = b.questions;
+        p.facts = b.facts; p.questions = b.questions; p.edited = false;
         changed(); render();
       };
       btns.appendChild(addC); btns.appendChild(addOX); btns.appendChild(reset);
@@ -168,7 +174,7 @@
       if (p.questions.length >= MAX_Q) { alertIn(p, "문제는 " + MAX_Q + "개까지 넣을 수 있어요."); return; }
       p.questions.push(q);
       openId = p.id;
-      changed(); render();
+      changed(p); render();
       var boxes = root.querySelectorAll("details.qzp[open] .qzq");
       var last = boxes[boxes.length - 1];
       if (last) { last.scrollIntoView({ behavior: "smooth", block: "center" }); last.querySelector("input").focus(); }
@@ -185,18 +191,21 @@
       var box = el("div", "qzq");
       var head = el("div", "qzhead");
       head.appendChild(el("b", "", (qi + 1) + "번"));
-      head.appendChild(el("span", "qztag qztag-" + (q.src || "kid"), TAGS[q.src] || TAGS.kid));
+      var tag = TAGS[q.src] || TAGS.kid;
+      if (p.by && q.src === "ppt") tag = "📘 " + p.by + " PPT";
+      if (p.by && q.src === "fix") tag = "🔧 " + p.by + " PPT 고침";
+      head.appendChild(el("span", "qztag qztag-" + (q.src || "kid"), tag));
       var del = el("button", "qzdel", "🗑️");
       del.type = "button";
       del.setAttribute("aria-label", "문제 지우기");
-      del.onclick = function () { p.questions.splice(qi, 1); changed(); render(); };
+      del.onclick = function () { p.questions.splice(qi, 1); changed(p); render(); };
       head.appendChild(del);
       box.appendChild(head);
       if (q.note) box.appendChild(el("div", "qznote", "✔ " + q.note));
 
       var qi1 = el("input");
       qi1.type = "text"; qi1.maxLength = 150; qi1.value = q.q; qi1.placeholder = "문제를 적어 줘";
-      qi1.oninput = function () { q.q = qi1.value; changed(); };
+      qi1.oninput = function () { q.q = qi1.value; changed(p); };
       box.appendChild(qi1);
 
       var isOX = q.c.length === 2 && q.c[0] === "O" && q.c[1] === "X";
@@ -207,7 +216,7 @@
         var r = el("input"); r.type = "radio"; r.name = name; r.checked = q.a === ci;
         r.setAttribute("aria-label", "정답으로 고르기");
         r.onchange = function () {
-          q.a = ci; changed();
+          q.a = ci; changed(p);
           cs.querySelectorAll(".qzc").forEach(function (x, i) { x.classList.toggle("right", i === ci); });
         };
         row.appendChild(r);
@@ -215,7 +224,7 @@
           row.appendChild(el("span", "qzox", c));
         } else {
           var t = el("input"); t.type = "text"; t.maxLength = 60; t.value = c; t.placeholder = "보기 " + (ci + 1);
-          t.oninput = function () { q.c[ci] = t.value; changed(); };
+          t.oninput = function () { q.c[ci] = t.value; changed(p); };
           row.appendChild(t);
           if (q.c.length > 2) {
             var x = el("button", "qzx", "✕"); x.type = "button"; x.setAttribute("aria-label", "보기 빼기");
@@ -223,7 +232,7 @@
               ev.preventDefault();
               q.c.splice(ci, 1);
               if (q.a === ci) q.a = 0; else if (q.a > ci) q.a--;
-              changed(); render();
+              changed(p); render();
             };
             row.appendChild(x);
           }
@@ -236,7 +245,7 @@
       if (!isOX && q.c.length < 4) {
         var add = el("button", "btn small", "➕ 보기");
         add.type = "button";
-        add.onclick = function () { q.c.push(""); changed(); render(); };
+        add.onclick = function () { q.c.push(""); changed(p); render(); };
         foot.appendChild(add);
       }
       box.appendChild(foot);
@@ -244,7 +253,7 @@
       var ex = el("input");
       ex.type = "text"; ex.maxLength = 150; ex.value = q.e || ""; ex.placeholder = "💡 맞히거나 틀린 뒤 보여 줄 설명 (안 적어도 돼요)";
       ex.className = "qzex";
-      ex.oninput = function () { q.e = ex.value; changed(); };
+      ex.oninput = function () { q.e = ex.value; changed(p); };
       box.appendChild(ex);
       return box;
     }

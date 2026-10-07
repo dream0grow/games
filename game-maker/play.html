@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>친구 게임 하기</title>
 <link rel="stylesheet" href="style.css?v=202610071400" />
 </head>
@@ -22,9 +22,12 @@
   <div class="card">
     <h2 id="title">불러오는 중… ⏳</h2>
     <p class="hint" id="by"></p>
+    <p class="rating-line hidden" id="avgLine"></p>
     <div id="err" class="err hidden"></div>
+    <button class="btn primary big playbig hidden" id="playBig">▶ 화면 가득 크게 놀기</button>
     <div class="stage hidden" id="stage" style="margin-top:12px">
       <iframe id="frame" sandbox="allow-scripts" allow="fullscreen; autoplay" allowfullscreen title="친구 게임"></iframe>
+      <button class="stage-exit" id="exitFull" aria-label="크게 보기 끝내기">✕ 나가기</button>
     </div>
     <div class="btns" id="btns" style="display:none">
       <button class="btn" id="fullscreen">⛶ 크게 보기</button>
@@ -40,6 +43,24 @@
     </div>
   </div>
 
+  <!-- 별점과 소감 -->
+  <div class="card hidden" id="reviewCard">
+    <h2>⭐ 이 게임 어땠어?</h2>
+    <p class="hint">게임을 해 본 뒤 별을 눌러 점수를 주고, 소감을 남겨 줘요.</p>
+    <div class="stars" id="starPick" role="radiogroup" aria-label="별점"></div>
+    <div id="reviewForm" class="hidden">
+      <p class="review-ask" id="reviewAsk"></p>
+      <div class="field"><label for="rvName">🙋 내 이름 <span class="sub">(꼭 적어요)</span></label>
+        <input type="text" id="rvName" maxlength="20" placeholder="예: 김지호" autocomplete="off" /></div>
+      <div class="field"><label for="rvText">💬 소감</label>
+        <textarea id="rvText" maxlength="300" style="min-height:90px"></textarea></div>
+      <div id="rvErr" class="err hidden"></div>
+      <div class="btns"><button class="btn primary" id="rvSend">📮 소감 남기기</button></div>
+    </div>
+    <div id="rvOk" class="ok hidden"></div>
+    <div id="reviews" class="reviews"></div>
+  </div>
+
   <div class="card hidden" id="ideaCard">
     <h2>💡 이 게임의 아이디어</h2>
     <p class="hint" style="margin-top:8px"><b>어떤 게임?</b></p>
@@ -53,6 +74,8 @@
 
 <script src="../supabase-config.js"></script>
 <script src="api.js?v=202610071400"></script>
+<script src="quiz/people.js?v=202610071400"></script>
+<script src="quiz/data.js?v=202610071400"></script>
 <script>
 (async function () {
   var GM = window.GameMaker;
@@ -60,42 +83,178 @@
   var id = new URLSearchParams(location.search).get("id");
   function fail(msg) { $("title").textContent = "😢 게임을 찾을 수 없어요"; $("err").textContent = msg; $("err").classList.remove("hidden"); }
   if (!id) return fail("주소가 잘못되었어요.");
+
+  // ---------- 크게 놀기 (휴대폰은 화면 가득, 되면 진짜 전체 화면) ----------
+  var stage = $("stage");
+  function enterFull() {
+    stage.classList.add("full");
+    document.documentElement.classList.add("noscroll");
+    var req = stage.requestFullscreen || stage.webkitRequestFullscreen;
+    if (req) { try { var p = req.call(stage); if (p && p.catch) p.catch(function () {}); } catch (e) {} }
+    try { screen.orientation && screen.orientation.lock && screen.orientation.lock("any").catch(function () {}); } catch (e) {}
+    setTimeout(function () { try { $("frame").contentWindow.focus(); } catch (e) {} }, 100);
+  }
+  function exitFull() {
+    stage.classList.remove("full");
+    document.documentElement.classList.remove("noscroll");
+    var fs = document.fullscreenElement || document.webkitFullscreenElement;
+    if (fs) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  }
+  document.addEventListener("fullscreenchange", function () { if (!document.fullscreenElement) { stage.classList.remove("full"); document.documentElement.classList.remove("noscroll"); } });
+  $("playBig").onclick = enterFull;
+  $("fullscreen").onclick = enterFull;
+  $("exitFull").onclick = exitFull;
+
+  var g, html;
   try {
-    var g = await GM.getGame(id);
+    g = await GM.getGame(id);
     if (!g) return fail("지워졌거나 숨겨진 게임이에요.");
-    document.title = g.title;
-    $("title").textContent = "🎮 " + g.title;
-    $("by").textContent = "만든 친구: " + g.author;
-    $("frame").srcdoc = g.html;
-    $("stage").classList.remove("hidden");
-    $("btns").style.display = "";
-    $("btns2").style.display = "";
-    $("edit").href = "./?edit=" + encodeURIComponent(g.id);
-    $("remix").href = "./?remix=" + encodeURIComponent(g.id);
-    $("hide").onclick = async function () {
-      try {
-        if (await GM.hideGame(g.id)) location.href = "gallery.html";
-      } catch (e) { $("err").textContent = GM.friendlyError(e); $("err").classList.remove("hidden"); }
-    };
-    $("remixPro").href = "pro/?remix=" + encodeURIComponent(g.id);
-    $("dl").onclick = function () {
-      var a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([g.html], { type: "text/html" }));
-      a.download = g.title.replace(/[\/:*?"<>|]/g, "") + " - " + g.author.replace(/[\/:*?"<>|]/g, "") + ".html";
-      document.body.appendChild(a); a.click(); a.remove();
-    };
-    $("replay").onclick = function () { $("frame").srcdoc = g.html; };
-    $("fullscreen").onclick = function () {
-      var f = $("frame");
-      (f.requestFullscreen || f.webkitRequestFullscreen || function () {}).call(f);
-    };
-    if (g.concept || g.rules) {
-      $("concept").textContent = g.concept || "-";
-      $("rules").textContent = g.rules || "-";
-      $("ideaCard").classList.remove("hidden");
+  } catch (e) { return fail(GM.friendlyError(e)); }
+
+  // 인물 퀴즈 게임이면 지금 문제 은행을 넣어서 보여 줌 (선생님이 고친 문제도 바로 반영)
+  var project = GM.unpackProject(g.html);
+  var quiz = project.idea && project.idea.quiz;
+  html = GM.prepareGame(g.html, quiz);
+
+  document.title = g.title;
+  $("title").textContent = (quiz ? "🧑‍🏫 " : "🎮 ") + g.title;
+  $("by").textContent = "만든 친구: " + g.author;
+  $("frame").srcdoc = html;
+  stage.classList.remove("hidden");
+  $("playBig").classList.remove("hidden");
+  $("btns").style.display = "";
+  $("btns2").style.display = "";
+  $("edit").href = (quiz ? "quiz/" : "./") + "?edit=" + encodeURIComponent(g.id);
+  $("remix").href = (quiz ? "quiz/" : "./") + "?remix=" + encodeURIComponent(g.id);
+  $("remixPro").href = "pro/?remix=" + encodeURIComponent(g.id);
+  if (quiz) $("remixPro").classList.add("hidden");
+  $("hide").onclick = async function () {
+    try {
+      if (await GM.hideGame(g.id)) location.href = "gallery.html";
+    } catch (e) { $("err").textContent = GM.friendlyError(e); $("err").classList.remove("hidden"); }
+  };
+  $("dl").onclick = function () {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    a.download = g.title.replace(/[\/:*?"<>|]/g, "") + " - " + g.author.replace(/[\/:*?"<>|]/g, "") + ".html";
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+  $("replay").onclick = function () { $("frame").srcdoc = html; };
+  if (g.concept || g.rules) {
+    $("concept").textContent = g.concept || "-";
+    $("rules").textContent = g.rules || "-";
+    $("ideaCard").classList.remove("hidden");
+  }
+
+  // ---------- 별점·소감 ----------
+  var ASK = {
+    5: ["🤩 최고였군요! 어떤 점이 가장 재미있었나요?", "예: 퀴즈를 맞힐 때 반짝이는 게 신났어요. 김정호 문제가 제일 재미있었어요!"],
+    4: ["😄 재미있었군요! 좋았던 점과, 이렇게 하면 더 좋겠다는 점을 적어 줘요.", "예: 캐릭터가 귀여웠어요. 문제가 조금 더 많으면 좋겠어요."],
+    3: ["🙂 괜찮았군요! 좋았던 점 하나, 아쉬운 점 하나를 적어 줘요.", "예: 미로는 재미있었는데 괴물이 너무 빨랐어요."],
+    2: ["🤔 조금 아쉬웠군요. 어떻게 바꾸면 더 재미있을까요?", "예: 버튼이 작아서 누르기 어려웠어요. 버튼을 크게 해 주세요."],
+    1: ["😢 많이 아쉬웠군요. 만든 친구가 고칠 수 있게 친절하게 알려 줘요.", "예: 시작 버튼을 눌러도 잘 안 움직였어요. 다시 한번 고쳐 주세요!"]
+  };
+  var picked = 0;
+  function starsText(n) { return "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n); }
+  function drawStars() {
+    var box = $("starPick"); box.innerHTML = "";
+    for (var i = 1; i <= 5; i++) (function (n) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "star" + (n <= picked ? " on" : "");
+      b.textContent = n <= picked ? "★" : "☆";
+      b.setAttribute("role", "radio"); b.setAttribute("aria-checked", n === picked ? "true" : "false");
+      b.setAttribute("aria-label", n + "점");
+      b.onclick = function () {
+        picked = n; drawStars();
+        $("reviewForm").classList.remove("hidden");
+        $("reviewAsk").textContent = n + "점 " + ASK[n][0];
+        $("rvText").placeholder = ASK[n][1];
+        $("rvOk").classList.add("hidden");
+        if (!$("rvName").value) $("rvName").focus(); else $("rvText").focus();
+      };
+      box.appendChild(b);
+    })(i);
+    var label = document.createElement("span");
+    label.className = "star-label"; label.textContent = picked ? picked + " / 5" : "";
+    box.appendChild(label);
+  }
+  try { $("rvName").value = localStorage.getItem("gm_reviewer") || ""; } catch (e) {}
+
+  async function loadReviews() {
+    var list = $("reviews");
+    try {
+      var rows = await GM.listReviews(g.id);
+      list.innerHTML = "";
+      var avg = rows.length ? rows.reduce(function (s, r) { return s + r.stars; }, 0) / rows.length : 0;
+      $("avgLine").classList.toggle("hidden", !rows.length);
+      $("avgLine").innerHTML = "";
+      if (rows.length) {
+        var st = document.createElement("span"); st.className = "stars-ro"; st.textContent = starsText(Math.round(avg));
+        $("avgLine").appendChild(st);
+        $("avgLine").appendChild(document.createTextNode(" " + avg.toFixed(1) + "점 · 소감 " + rows.length + "개"));
+      }
+      if (!rows.length) { list.innerHTML = '<p class="hint" style="margin-top:12px">아직 소감이 없어요. 첫 번째로 남겨 볼까?</p>'; return; }
+      var h = document.createElement("h3"); h.textContent = "💬 친구들의 소감 (" + rows.length + ")";
+      list.appendChild(h);
+      rows.forEach(function (r) {
+        var item = document.createElement("div"); item.className = "review";
+        var top = document.createElement("div"); top.className = "review-top";
+        var s = document.createElement("span"); s.className = "stars-ro"; s.textContent = starsText(r.stars);
+        var n = document.createElement("b"); n.textContent = r.name;
+        var d = document.createElement("span"); d.className = "hint"; d.style.fontSize = "13px";
+        d.textContent = new Date(r.created_at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" });
+        var x = document.createElement("button"); x.className = "review-hide"; x.textContent = "🙈"; x.title = "숨기기 (교실 코드)";
+        x.onclick = async function () {
+          try {
+            if (!(await GM.requireCode())) return;
+            await GM.postJson("hide_review", { reviewId: r.id });
+            loadReviews();
+          } catch (e) { alert(GM.friendlyError(e)); }
+        };
+        top.appendChild(s); top.appendChild(n); top.appendChild(d); top.appendChild(x);
+        var c = document.createElement("p"); c.textContent = r.comment;
+        item.appendChild(top); item.appendChild(c);
+        list.appendChild(item);
+      });
+    } catch (e) {
+      list.innerHTML = "";
+      var p = document.createElement("p"); p.className = "hint"; p.textContent = GM.friendlyError(e);
+      list.appendChild(p);
     }
-  } catch (e) {
-    fail(GM.friendlyError(e));
+  }
+
+  $("rvSend").onclick = async function () {
+    var name = $("rvName").value.trim(), text = $("rvText").value.trim();
+    var errBox = $("rvErr");
+    function err(m) { errBox.textContent = m; errBox.classList.toggle("hidden", !m); }
+    if (!picked) return err("⭐ 별을 먼저 골라 줘!");
+    if (!name) { $("rvName").focus(); return err("🙋 이름을 꼭 적어 줘!"); }
+    if (text.length < 2) { $("rvText").focus(); return err("💬 소감을 조금만 적어 줘!"); }
+    err("");
+    var btn = this; btn.disabled = true;
+    try {
+      if (!(await GM.requireCode())) return;
+      await GM.postJson("review", { id: g.id, stars: picked, name: name, comment: text });
+      try { localStorage.setItem("gm_reviewer", name); } catch (e) {}
+      $("rvText").value = ""; picked = 0; drawStars();
+      $("reviewForm").classList.add("hidden");
+      $("rvOk").textContent = "🎉 소감을 남겼어요! 고마워요, " + name + "!";
+      $("rvOk").classList.remove("hidden");
+      loadReviews();
+    } catch (e) {
+      err(GM.friendlyError(e));
+    } finally { btn.disabled = false; }
+  };
+  drawStars();
+  $("reviewCard").classList.remove("hidden");
+  loadReviews();
+
+  // 썸네일이 아직 없으면 게임 화면을 찍어서 채워 둠 (교실 코드가 있는 기기에서만)
+  if (!g.thumb && GM.getCode()) {
+    setTimeout(async function () {
+      var t = await GM.captureThumb(html);
+      if (t) GM.postJson("thumb", { id: g.id, thumb: t }).catch(function () {});
+    }, 4000);
   }
 })();
 </script>
