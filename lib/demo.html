@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>도구 시험장 — Phaser · ZzFX · Kenney</title>
+<style>
+  html, body { margin: 0; background: #e8f4ff; font-family: system-ui, "Apple SD Gothic Neo", sans-serif; color: #17324d; }
+  header { padding: 12px 16px 4px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { margin: 0 0 8px; font-size: 14px; }
+  /* Phaser 의 FIT 모드는 부모 칸 크기에 맞추므로, 부모 칸에 비율을 정해 둡니다 */
+  #game { width: 100%; max-width: 480px; aspect-ratio: 360 / 420; margin: 0 auto; }
+  .sounds { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px 24px; justify-content: center; }
+  .sounds button { font-size: 16px; padding: 10px 14px; border-radius: 12px; border: 0; background: #2b7de9; color: #fff; min-width: 76px; }
+  .sounds button.off { background: #8a99a8; }
+</style>
+</head>
+<body>
+<header>
+  <h1>도구 시험장</h1>
+  <p>동물을 누르면 정답 소리와 반짝이가 나옵니다. 아래 버튼으로 효과음을 하나씩 들어 보세요.</p>
+</header>
+<div id="game"></div>
+<div class="sounds" id="sounds"></div>
+
+<script src="phaser/phaser.min.js"></script>
+<script src="zzfx/ZzFXMicro.min.js"></script>
+<script src="sfx.js"></script>
+<script>
+  var K = '../assets/kenney/';
+  var ANIMALS = ['rabbit', 'frog', 'owl', 'penguin', 'monkey', 'pig'];
+  var LABELS = { click: '클릭', pop: '뿅', correct: '정답', wrong: '오답', coin: '코인', jump: '점프',
+                 hit: '부딪힘', powerup: '파워업', countdown: '카운트', win: '승리', lose: '패배' };
+
+  // 효과음 버튼
+  var box = document.getElementById('sounds');
+  SFX.names().forEach(function (n) {
+    var b = document.createElement('button');
+    b.textContent = LABELS[n] || n;
+    b.onclick = function () { SFX.play(n); };
+    box.appendChild(b);
+  });
+  var m = document.createElement('button');
+  m.textContent = '소리 끄기';
+  m.onclick = function () { var on = SFX.mute(!SFX.isMuted()); m.textContent = on ? '소리 켜기' : '소리 끄기'; m.classList.toggle('off', on); };
+  box.appendChild(m);
+
+  var score = 0, scoreText;
+
+  function preload() {
+    this.load.image('bg', K + 'New Platformer Pack/Sprites/Backgrounds/background_color_hills.png');
+    this.load.image('spark', K + 'Particle Pack/PNG (Transparent)/star_06.png');
+    this.load.image('medal', K + 'Medals/flat_medal1.png');
+    var self = this;
+    ANIMALS.forEach(function (a) { self.load.image(a, K + 'Animal Pack Remastered/Round/' + a + '.png'); });
+  }
+
+  function create() {
+    var W = this.scale.width, H = this.scale.height;
+    this.add.image(W / 2, H / 2, 'bg').setDisplaySize(W, H);
+    this.add.image(40, 40, 'medal').setScale(0.6);
+    scoreText = this.add.text(70, 26, '0점', { fontSize: '28px', color: '#17324d', fontStyle: 'bold' }).setDepth(10);
+
+    var animals = this.physics.add.group({ bounceX: 1, bounceY: 1, collideWorldBounds: true });
+    var self = this;
+    ANIMALS.forEach(function (a, i) {
+      var s = animals.create(60 + i * 50, 120 + (i % 3) * 70, a).setScale(0.45).setInteractive();
+      s.setVelocity(Phaser.Math.Between(-140, 140), Phaser.Math.Between(-140, 140));
+      s.on('pointerdown', function () {
+        SFX.play('correct');
+        score += 10;
+        scoreText.setText(score + '점');
+        var fx = self.add.particles(s.x, s.y, 'spark', { speed: { min: 80, max: 220 }, scale: { start: 0.25, end: 0 }, lifespan: 500, quantity: 14, emitting: false, tint: [0xffd23f, 0xff7ab6, 0x7fd6ff] });
+        fx.explode(14);
+        self.tweens.add({ targets: s, scale: 0.6, yoyo: true, duration: 120 });
+        if (score % 50 === 0) SFX.play('win');
+      });
+    });
+    this.physics.add.collider(animals, animals);
+  }
+
+  window.demoGame = new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: 360,
+    height: 420,
+    backgroundColor: '#bfe3ff',
+    physics: { default: 'arcade' },
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_HORIZONTALLY },
+    scene: { preload: preload, create: create }
+  });
+</script>
+</body>
+</html>

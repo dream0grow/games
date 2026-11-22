@@ -1,0 +1,13 @@
+Kenney game assets
+
+Created/distributed by Kenney (www.kenney.nl)
+
+License: Creative Commons Zero (CC0)
+http://creativecommons.org/publicdomain/zero/1.0/
+
+You can use this content for personal, educational, and commercial purposes.
+Support by crediting 'Kenney' or 'www.kenney.nl' (this is not a requirement).
+
+Packs in this folder were taken from the mirror https://github.com/shorepine/kenney
+(commit 3694c6879e487c108f55677be7dd2ca75b07cc3b). Each pack's own license on
+kenney.nl is CC0.

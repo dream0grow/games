@@ -87,3 +87,12 @@ This repo already holds finished browser games at the root (`gotjawal-*/`,
 leaderboard). Claude Code Game Studios was added on top of them. Do not move or
 rewrite those existing games unless the user asks. New prototypes go in
 `prototypes/<name>/`. Answer the user in Korean, in "~입니다" style.
+
+Shared, vendored tools (no CDN — use these first, by relative path):
+- `lib/phaser/phaser.min.js` — Phaser 4.2.1 (2D engine)
+- `lib/zzfx/ZzFXMicro.min.js` + `lib/sfx.js` — sound effects without audio files
+  (`SFX.play('correct' | 'wrong' | 'click' | 'coin' | 'jump' | 'win' ...)`)
+- `lib/jsfxr/` — WAV sound generator, only when a file is needed
+- `assets/kenney/` — CC0 sprites (animals, platformer, foliage, UI, mobile
+  controls, icons, medals, particles); see its README for the pack list
+- Usage guide: `lib/README.md`; working example: `lib/demo.html`
